@@ -10,7 +10,12 @@ export const getDatabaseConfig = (
   username: configService.get<string>('DB_USERNAME'),
   password: configService.get<string>('DB_PASSWORD'),
   database: configService.get<string>('DB_DATABASE'),
-  entities: [__dirname + '/**/*.entity{.ts,.js}'],
+  entities: [
+    __dirname + '/../users/entities/*.entity{.ts,.js}',
+    __dirname + '/../teams/entities/*.entity{.ts,.js}',
+    __dirname + '/../questionnaires/entities/*.entity{.ts,.js}',
+    __dirname + '/../responses/entities/*.entity{.ts,.js}',
+  ],
   synchronize: configService.get<string>('NODE_ENV') === 'development',
   logging: configService.get<string>('NODE_ENV') === 'development',
   charset: 'utf8mb4',
