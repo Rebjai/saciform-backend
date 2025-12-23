@@ -39,7 +39,7 @@ $ pnpm install
 ## Configuración
 
 1. Crear archivo `.env` basado en `.env.example`
-2. Configurar base de datos PostgreSQL
+2. Configurar base de datos Mysql
 3. Ejecutar migraciones
 
 ## Ejecutar la aplicación
@@ -51,6 +51,20 @@ $ pnpm run start:dev
 # producción
 $ pnpm run start:prod
 ```
+
+## Seed
+
+Para poblar la base de datos con datos de prueba:
+
+```bash
+# ejecutar seeder
+$ pnpm run seed
+```
+
+**Usuarios creados por defecto:**
+- **Admin**: `admin@sacifor.com` / `admin123`
+- **Editor**: `editor@sacifor.com` / `editor123`
+- **User**: `user@sacifor.com` / `user123`
 
 ## Testing
 
@@ -69,7 +83,7 @@ $ pnpm run test:cov
 
 - **NestJS** - Framework Node.js
 - **TypeORM** - ORM para base de datos
-- **PostgreSQL** - Base de datos principal
+- **Mysql** - Base de datos principal
 - **JWT** - Autenticación
 - **Passport** - Estrategias de autenticación
 - **Class Validator** - Validación de datos
