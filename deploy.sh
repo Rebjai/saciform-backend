@@ -41,19 +41,30 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-# Install dependencies (only production)
-echo -e "${YELLOW}📦 Installing/updating production dependencies...${NC}"
-if command -v pnpm &> /dev/null; then
-    pnpm install --prod --frozen-lockfile
-else
-    echo -e "${YELLOW}⚠️  pnpm not found, using npm...${NC}"
-    npm install --production --frozen-lockfile
-fi
+# Dependencies are already included in the deployment archive
+echo -e "${GREEN}✅ Using pre-packaged dependencies from deployment archive${NC}"
 
 # Run database migrations (if applicable)
 # Uncomment the following lines when you have migrations
 # echo -e "${YELLOW}🗄️  Running database migrations...${NC}"
 # pnpm typeorm migration:run || npm run typeorm migration:run
+
+# Check if Node.js is installed
+if ! command -v node &> /dev/null; then
+    echo -e "${RED}❌ Node.js is not installed!${NC}"
+    echo -e "${YELLOW}Installing Node.js via nvm...${NC}"
+    
+    # Install nvm if not present
+    if [ ! -d "$HOME/.nvm" ]; then
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    fi
+    
+    # Install Node.js LTS
+    nvm install --lts
+    nvm use --lts
+fi
 
 # Check if PM2 is installed
 if ! command -v pm2 &> /dev/null; then
