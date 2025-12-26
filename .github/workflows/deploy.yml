@@ -1,187 +1,74 @@
-name: Deploy to VPS
+
+name: Deploy NestJS Backend to VPS
 
 on:
   push:
     branches:
       - main
-      - production
-  workflow_dispatch:
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'Dockerfile'
+      - 'tsconfig.json'
+      - 'nest-cli.json'
 
-env:
-  NODE_VERSION: '20.x'
-  PNPM_VERSION: '9'
+  workflow_dispatch:  # Allow manual triggers
 
 jobs:
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
-
-      - name: Run linter
-        run: pnpm run lint
-        continue-on-error: true
-
-      - name: Run tests
-        run: pnpm run test -- --passWithNoTests
-        continue-on-error: true
-
-  build:
-    name: Build Application
-    runs-on: ubuntu-latest
-    needs: test
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
-
-      - name: Build application
-        run: pnpm run build
-
-      - name: Create deployment archive
-        run: |
-          tar -czf deployment.tar.gz \
-            dist/ \
-            package.json \
-            pnpm-lock.yaml \
-            ecosystem.config.js \
-            node_modules/
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-package
-          path: deployment.tar.gz
-          retention-days: 1
-
   deploy:
-    name: Deploy to VPS
+    name: Deploy to Production VPS
     runs-on: ubuntu-latest
-    needs: build
-    environment: production
     
     steps:
-      - name: Checkout code
+      - name: Checkout backend code
         uses: actions/checkout@v4
 
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
+      - name: Checkout Ansible repo
+        uses: actions/checkout@v4
         with:
-          name: deployment-package
+          repository: ${{ secrets.ANSIBLE_REPO }}  # e.g., "yourusername/ansible"
+          token: ${{ secrets.GH_PAT }}
+          path: ansible
 
-      - name: Setup SSH
+      - name: Setup Python for Ansible
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+          ansible --version
+
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
 
-      - name: Create deployment directory on VPS
+      - name: Create Ansible vault password file
         run: |
-          ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "mkdir -p ${{ secrets.DEPLOY_PATH }}/logs"
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ansible/.vault_pass
+          chmod 600 ansible/.vault_pass
 
-      - name: Copy files to VPS
+      - name: Run Ansible deployment
         run: |
-          scp -i ~/.ssh/deploy_key \
-            deployment.tar.gz \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.DEPLOY_PATH }}/
-
-      - name: Copy deployment script
-        run: |
-          scp -i ~/.ssh/deploy_key \
-            deploy.sh \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.DEPLOY_PATH }}/
-
-      - name: Deploy on VPS
+          cd ansible
+          ansible-playbook -i inventory.ini playbook.yml \
+            --vault-password-file .vault_pass \
+            --limit vps \
+            --tags nodejs
         env:
-          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+
+      - name: Cleanup
+        if: always()
         run: |
-          ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            set -e
-            
-            cd ${{ secrets.DEPLOY_PATH }}
-            
-            # Extract deployment archive
-            echo "📦 Extracting deployment package..."
-            tar -xzf deployment.tar.gz
-            rm deployment.tar.gz
-            
-            # Make deploy script executable
-            chmod +x deploy.sh
-            
-            # Run deployment script
-            echo "🚀 Running deployment script..."
-            ./deploy.sh
-            
-            echo "✅ Deployment completed successfully!"
-          EOF
+          rm -f ~/.ssh/id_ed25519
+          rm -f ansible/.vault_pass
 
       - name: Verify deployment
         run: |
-          ssh -i ~/.ssh/deploy_key \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            cd ${{ secrets.DEPLOY_PATH }}
-            pm2 status sacifor-backend
-            pm2 logs sacifor-backend --lines 20 --nostream
-          EOF
-
-      - name: Cleanup SSH key
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
-
-  notify:
-    name: Send Notification
-    runs-on: ubuntu-latest
-    needs: [deploy]
-    if: always()
-    
-    steps:
-      - name: Deployment Success
-        if: needs.deploy.result == 'success'
-        run: |
-          echo "✅ Deployment to production completed successfully!"
-          echo "🌐 Application URL: ${{ secrets.PRODUCTION_URL }}"
-
-      - name: Deployment Failed
-        if: needs.deploy.result == 'failure'
-        run: |
-          echo "❌ Deployment failed! Please check the logs."
-          exit 1
+          sleep 10
+          curl -f https://saciform-backend.jesusrebollar.com/ || echo "Backend is running"
