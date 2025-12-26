@@ -49,17 +49,17 @@ export class Response {
   updatedAt: Date;
 
   // Relación: Muchas respuestas pertenecen a un usuario
-  @ManyToOne('User', { nullable: false })
+  @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'userId' })
-  user: any;
+  user: User;
 
   @Column()
   userId: string;
 
   // Relación: Muchas respuestas pertenecen a un cuestionario
-  @ManyToOne('Questionnaire', { nullable: false })
+  @ManyToOne(() => Questionnaire, { nullable: false })
   @JoinColumn({ name: 'questionnaireId' })
-  questionnaire: any;
+  questionnaire: Questionnaire;
 
   @Column()
   questionnaireId: string;
