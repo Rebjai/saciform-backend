@@ -34,6 +34,6 @@ export class QuestionnairesController {
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.USER)
   findOne(@Param('id') id: string) {
-    return this.questionnairesService.findOne(id);
+    return this.questionnairesService.findOneFormatted(id);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Questionnaire } from './entities/questionnaire.entity';
@@ -38,21 +38,53 @@ export class QuestionnairesService {
       await this.questionsRepository.save(questionEntities);
     }
 
-    // 3. Retornar el cuestionario con sus preguntas
-    return this.findOne(savedQuestionnaire.id);
+    // 3. Retornar el cuestionario con sus preguntas (formato limpio)
+    return this.findOneFormatted(savedQuestionnaire.id);
   }
 
   async findAll() {
-    return this.questionnairesRepository.find({
+    const questionnaires = await this.questionnairesRepository.find({
       where: { isActive: true },
+      relations: ['questions'],
       order: { createdAt: 'DESC' },
     });
+
+    return questionnaires.map(questionnaire => this.formatQuestionnaire(questionnaire));
   }
 
   async findOne(id: string) {
-    return this.questionnairesRepository.findOne({
+    const questionnaire = await this.questionnairesRepository.findOne({
       where: { id, isActive: true },
       relations: ['questions'],
     });
+
+    if (!questionnaire) {
+      throw new NotFoundException('Cuestionario no encontrado');
+    }
+
+    return questionnaire;
+  }
+
+  async findOneFormatted(id: string) {
+    const questionnaire = await this.findOne(id);
+    return this.formatQuestionnaire(questionnaire);
+  }
+
+  private formatQuestionnaire(questionnaire: any) {
+    return {
+      id: questionnaire.id,
+      title: questionnaire.title,
+      description: questionnaire.description,
+      questions: questionnaire.questions
+        .sort((a, b) => a.order - b.order)
+        .map(question => ({
+          id: question.id,
+          text: question.text,
+          type: question.type,
+          options: question.options,
+          isRequired: question.isRequired,
+          order: question.order,
+        })),
+    };
   }
 }

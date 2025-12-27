@@ -18,10 +18,6 @@ export class CreateQuestionDto {
   @IsOptional()
   @IsBoolean()
   isRequired?: boolean = false;
-
-  @IsOptional()
-  @IsString()
-  helpText?: string;
 }
 
 export class CreateQuestionnaireDto {
