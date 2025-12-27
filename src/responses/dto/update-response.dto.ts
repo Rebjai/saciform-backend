@@ -1,24 +1,11 @@
-import { IsEnum, IsOptional, IsNumber, IsObject } from 'class-validator';
-import { ResponseStatus } from '../../common/enums';
+import { IsOptional, IsObject } from 'class-validator';
 
 export class UpdateResponseDto {
   @IsOptional()
-  @IsNumber()
-  latitude?: number;
-
-  @IsOptional()
-  @IsNumber()
-  longitude?: number;
-
-  @IsOptional()
-  @IsNumber()
-  gpsAccuracy?: number;
-
-  @IsOptional()
-  @IsEnum(ResponseStatus)
-  status?: ResponseStatus;
+  @IsObject()
+  answers?: Record<string, any>; // Respuestas actualizadas
 
   @IsOptional()
   @IsObject()
-  answers?: Record<string, any>; // Mismo formato que en Create
+  metadata?: Record<string, any>; // Metadata actualizada
 }

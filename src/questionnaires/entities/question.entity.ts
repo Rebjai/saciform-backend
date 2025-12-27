@@ -37,9 +37,6 @@ export class Question {
   @Column({ type: 'int' })
   order: number; // Orden de la pregunta en el cuestionario
 
-  @Column({ type: 'text', nullable: true })
-  helpText: string; // Texto de ayuda para la pregunta
-
   @CreateDateColumn()
   createdAt: Date;
 

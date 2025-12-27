@@ -37,14 +37,14 @@ export class ResponsesController {
   @Roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.USER)
   findAll(
     @Request() req,
-    @Query('questionnaireId') questionnaireId?: string,
+    @Query('surveyId') surveyId?: string,
     @Query('status') status?: ResponseStatus,
   ) {
     // Los usuarios normales solo ven sus propias respuestas
     // Los ADMIN y EDITOR pueden ver todas las respuestas
     const userId = req.user.role === UserRole.USER ? req.user.id : undefined;
     
-    return this.responsesService.findAll(userId, questionnaireId, status);
+    return this.responsesService.findAll(userId, surveyId, status);
   }
 
   @Get(':id')

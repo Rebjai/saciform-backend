@@ -6,6 +6,30 @@
 **Autenticación**: JWT Bearer Token  
 **Content-Type**: `application/json`
 
+### ⚙️ Configuración Inicial
+
+#### Primera instalación:
+```bash
+# Clonar repositorio e instalar
+cd /path/to/project
+pnpm install
+
+# Configurar base de datos (seguir database-setup.md)
+# Luego poblar con datos de prueba:
+pnpm run seed
+
+# Iniciar servidor
+pnpm run start:dev
+```
+
+#### Si recreas la base de datos:
+```bash
+# Después de recrear las tablas, siempre ejecutar:
+pnpm run seed
+
+# Esto restaura los usuarios de prueba y datos iniciales
+```
+
 ---
 
 ## 🔐 1. Autenticación
@@ -36,10 +60,12 @@ curl -X POST http://localhost:3000/auth/login \
 }
 ```
 
-### Usuarios de Prueba Disponibles:
+### Usuarios de Prueba Disponibles (creados con `pnpm run seed`):
 - **Admin**: `admin@sacifor.com` / `admin123`
 - **Editor**: `editor@sacifor.com` / `editor123`
 - **User**: `user@sacifor.com` / `user123`
+
+**💡 Tip**: Si recreas la base de datos, ejecuta `pnpm run seed` para restaurar estos usuarios.
 
 ---
 
@@ -73,8 +99,7 @@ curl -X GET http://localhost:3000/questionnaires \
         "type": "text",
         "options": null,
         "isRequired": true,
-        "order": 1,
-        "helpText": "Ingresa tu nombre y apellido completo"
+        "order": 1
       },
       {
         "id": "b0d72288-5d8d-4920-9b4b-2b82d02ff39f",
@@ -82,8 +107,7 @@ curl -X GET http://localhost:3000/questionnaires \
         "type": "radio",
         "options": ["Excelente", "Bueno", "Regular", "Malo"],
         "isRequired": true,
-        "order": 2,
-        "helpText": null
+        "order": 2
       }
     ]
   }
@@ -114,8 +138,7 @@ curl -X POST http://localhost:3000/questionnaires \
       {
         "text": "¿Cuál es tu nombre?",
         "type": "text",
-        "isRequired": true,
-        "helpText": "Ingresa tu nombre completo"
+        "isRequired": true
       },
       {
         "text": "Selecciona tu edad",
@@ -132,8 +155,7 @@ curl -X POST http://localhost:3000/questionnaires \
       {
         "text": "Comentarios adicionales",
         "type": "textarea",
-        "isRequired": false,
-        "helpText": "Comparte tus comentarios"
+        "isRequired": false
       }
     ]
   }'
@@ -141,10 +163,10 @@ curl -X POST http://localhost:3000/questionnaires \
 
 ---
 
-## 📋 3. Respuestas
+## 📋 3. Respuestas (Modelo Simplificado)
 
 ### POST /responses
-Crear una nueva respuesta (borrador).
+Crear una nueva respuesta con estructura JSON flexible.
 
 **Request:**
 ```bash
@@ -152,15 +174,34 @@ curl -X POST http://localhost:3000/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "questionnaireId": "ca660e12-24b7-416e-b154-1085e6f9e469",
-    "latitude": -12.0464,
-    "longitude": -77.0428,
-    "gpsAccuracy": 5.2,
+    "surveyId": "local_actors_interview_v1",
     "answers": {
-      "a16fc7dc-50e8-4d7f-87c6-a39dc82d33b1": "Juan Pérez García",
-      "b0d72288-5d8d-4920-9b4b-2b82d02ff39f": ["Excelente"],
-      "61108665-c1df-48cb-be57-2b64b32a83d8": ["Laptop", "Mouse"],
-      "dca13de3-ce68-4f3d-9f24-11882f654e33": "Muy buen servicio"
+      "fullname": "Juan Pérez García",
+      "age": "32",
+      "occupation": "Ingeniero",
+      "satisfaction_rating": "excellent",
+      "services_used": ["consulting", "training", "support"],
+      "feedback": "Excelente servicio, muy recomendable",
+      "would_recommend": true,
+      "contact_preference": "email"
+    },
+    "metadata": {
+      "location": {
+        "latitude": -12.0464,
+        "longitude": -77.0428,
+        "accuracy": 5.2,
+        "city": "Lima"
+      },
+      "device": {
+        "userAgent": "Mozilla/5.0...",
+        "platform": "Android",
+        "version": "1.2.3"
+      },
+      "survey_info": {
+        "duration_seconds": 245,
+        "completion_percentage": 100,
+        "language": "es"
+      }
     }
   }'
 ```
@@ -169,9 +210,9 @@ curl -X POST http://localhost:3000/responses \
 ```json
 {
   "id": "a7b51c88-0a01-4b4a-9f43-27bae002aa67",
+  "surveyId": "local_actors_interview_v1",
   "status": "draft",
-  "questionnaireId": "ca660e12-24b7-416e-b154-1085e6f9e469",
-  "answersCount": 4,
+  "answersCount": 8,
   "createdAt": "2025-12-26T00:50:16.179Z",
   "message": "Respuesta creada exitosamente"
 }
@@ -188,17 +229,17 @@ curl -X POST "http://localhost:3000/responses?include=full" \
 Listar respuestas con filtros opcionales.
 
 **Parámetros de query:**
-- `questionnaireId`: Filtrar por cuestionario específico
+- `surveyId`: Filtrar por survey específico
 - `status`: Filtrar por estado (`draft` o `final`)
 
 **Ejemplos:**
 ```bash
-# Todas las respuestas
+# Todas las respuestas del usuario
 curl -X GET http://localhost:3000/responses \
   -H "Authorization: Bearer YOUR_TOKEN"
 
-# Solo respuestas de un cuestionario
-curl -X GET "http://localhost:3000/responses?questionnaireId=ca660e12-24b7-416e-b154-1085e6f9e469" \
+# Solo respuestas de un survey específico
+curl -X GET "http://localhost:3000/responses?surveyId=local_actors_interview_v1" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Solo borradores
@@ -210,7 +251,7 @@ curl -X GET "http://localhost:3000/responses?status=final" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Combinado
-curl -X GET "http://localhost:3000/responses?questionnaireId=ca660e12-24b7-416e-b154-1085e6f9e469&status=final" \
+curl -X GET "http://localhost:3000/responses?surveyId=local_actors_interview_v1&status=final" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -224,7 +265,7 @@ curl -X GET http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002aa67
 ```
 
 ### PATCH /responses/:id
-Actualizar una respuesta existente (solo en estado draft para USER).
+Actualizar una respuesta existente (merge de datos).
 
 **Request:**
 ```bash
@@ -233,12 +274,19 @@ curl -X PATCH http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002aa
   -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
     "answers": {
-      "a16fc7dc-50e8-4d7f-87c6-a39dc82d33b1": "NOMBRE ACTUALIZADO",
-      "b0d72288-5d8d-4920-9b4b-2b82d02ff39f": ["Bueno"]
+      "fullname": "Juan Carlos Pérez García",
+      "feedback": "Servicio actualizado - muy buena experiencia"
     },
-    "latitude": -12.1000,
-    "longitude": -77.1000,
-    "gpsAccuracy": 3.8
+    "metadata": {
+      "location": {
+        "latitude": -12.1000,
+        "longitude": -77.1000,
+        "accuracy": 3.8
+      },
+      "survey_info": {
+        "completion_percentage": 85
+      }
+    }
   }'
 ```
 
@@ -268,31 +316,78 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 
 ---
 
-## 🔧 4. Tipos de Preguntas Soportados
+## 🔧 4. Estructura de Datos JSON
 
-### Tipos Básicos:
-- **`text`**: Texto corto (input)
-- **`textarea`**: Texto largo (textarea)
-- **`radio`**: Opción única (requiere `options`)
-- **`checkbox`**: Opción múltiple (requiere `options`)
-- **`select`**: Lista desplegable (requiere `options`)
-- **`number`**: Entrada numérica
+### Campos Principales:
+```typescript
+{
+  "surveyId": string,     // Identificador del survey (ej: "local_actors_interview_v1")
+  "answers": object,      // Respuestas en formato JSON libre
+  "metadata": object      // Información adicional opcional
+}
+```
 
-### Tipos Avanzados (Preparados):
-- **`image`**: Captura/adjuntar imágenes
-- **`gps`**: Captura automática GPS
-- **`gps_manual`**: Coordenadas GPS manuales
-
-### Formato de Respuestas por Tipo:
+### Estructura Flexible de Answers:
 ```json
 {
   "answers": {
-    "pregunta-text": "Respuesta de texto",
-    "pregunta-textarea": "Texto largo...",
-    "pregunta-radio": ["Opción seleccionada"],
-    "pregunta-checkbox": ["Opción 1", "Opción 3"],
-    "pregunta-select": ["Opción seleccionada"],
-    "pregunta-number": "25"
+    // Texto simple
+    "fullname": "Juan Pérez",
+    "email": "juan@example.com",
+    
+    // Números
+    "age": "32",
+    "rating": "8.5",
+    
+    // Booleanos
+    "agreed_terms": true,
+    "wants_newsletter": false,
+    
+    // Arrays (opciones múltiples)
+    "interests": ["technology", "sports", "music"],
+    "preferred_days": ["monday", "wednesday", "friday"],
+    
+    // Texto largo
+    "comments": "Este es un comentario largo que puede contener múltiples líneas...",
+    
+    // Valores complejos
+    "address": {
+      "street": "Av. Principal 123",
+      "city": "Lima",
+      "country": "Peru"
+    }
+  }
+}
+```
+
+### Estructura Recomendada de Metadata:
+```json
+{
+  "metadata": {
+    "location": {
+      "latitude": -12.0464,
+      "longitude": -77.0428,
+      "accuracy": 5.2,
+      "city": "Lima",
+      "country": "Peru"
+    },
+    "device": {
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
+      "platform": "Web",
+      "app_version": "1.2.3"
+    },
+    "survey_info": {
+      "start_time": "2025-12-26T10:00:00Z",
+      "end_time": "2025-12-26T10:04:15Z",
+      "duration_seconds": 255,
+      "completion_percentage": 100,
+      "language": "es"
+    },
+    "custom_fields": {
+      "interviewer_id": "USR001",
+      "location_type": "field",
+      "weather": "sunny"
+    }
   }
 }
 ```
@@ -384,87 +479,261 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 
 ### Flujo Recomendado:
 1. **Login** → Obtener token y datos de usuario
-2. **Listar cuestionarios** → Mostrar opciones disponibles  
-3. **Crear respuesta** → Iniciar como draft
-4. **Guardar progreso** → PATCH para actualizar
+2. **Definir surveyId** → Identificador único del cuestionario/formulario
+3. **Crear respuesta** → POST /responses con surveyId y estructura JSON flexible
+4. **Guardar progreso** → PATCH para hacer merge de nuevos datos
 5. **Finalizar** → PATCH /finalize cuando esté completo
 
+### Estructura JSON Flexible:
+- **Answers**: Campo JSON libre para todas las respuestas del formulario
+- **Metadata**: Campo JSON opcional para información adicional (GPS, device info, etc.)
+- **Merge automático**: Las actualizaciones se combinan con los datos existentes
+
 ### Validaciones Frontend:
-- Validar campos requeridos antes de enviar
-- Validar formato de coordenadas GPS
-- Validar selecciones según tipo de pregunta
-- Mostrar ayuda (`helpText`) cuando esté disponible
+- El backend NO valida la estructura interna de `answers` o `metadata`
+- Toda validación de campos debe hacerse en el frontend
+- El `surveyId` es requerido y debe ser consistente
+- Los JSONs deben ser válidos (no strings mal formados)
 
 ### Optimizaciones:
 - Usar respuesta corta por defecto (`POST /responses`)
 - Usar respuesta completa solo cuando necesites todos los datos (`?include=full`)
 - Implementar guardado automático (cada X segundos)
-- Cache de cuestionarios en localStorage
+- Cache de respuestas en localStorage antes de enviar
+- Enviar metadata del dispositivo y ubicación cuando sea posible
 
 ---
 
-## 🧪 8. Script de Prueba Completo
+## 🧪 8. Proceso Completo de Prueba
 
+### Paso 1: Preparar el Entorno
+```bash
+cd /home/Dano/Documentos/nestjs-projects/sacifor-backend
+
+# Instalar dependencias (si es primera vez)
+pnpm install
+
+# Iniciar el servidor en modo desarrollo
+pnpm run start:dev
+
+# En otra terminal: Poblar la base de datos con datos de prueba
+pnpm run seed
+```
+
+**Nota**: El comando `pnpm run seed` crea usuarios de prueba y datos iniciales. Ejecutar cada vez que se recreee la base de datos.
+
+### Paso 2: Script de Prueba Automática
 ```bash
 #!/bin/bash
 
-# Variables
+# Variables de configuración
 BASE_URL="http://localhost:3000"
 EMAIL="admin@sacifor.com"
 PASSWORD="admin123"
 
-echo "🔐 1. Login..."
-TOKEN=$(curl -s -X POST $BASE_URL/auth/login \
+echo "� Iniciando pruebas del API simplificada..."
+
+echo "�🔐 1. Realizando login..."
+LOGIN_RESPONSE=$(curl -s -X POST $BASE_URL/auth/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" \
-  | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
 
-echo "Token obtenido: ${TOKEN:0:20}..."
+TOKEN=$(echo $LOGIN_RESPONSE | jq -r .access_token)
+echo "✅ Token obtenido: ${TOKEN:0:30}..."
 
-echo "📝 2. Listar cuestionarios..."
-curl -s -X GET $BASE_URL/questionnaires \
-  -H "Authorization: Bearer $TOKEN" | jq .
-
-echo "📋 3. Crear respuesta..."
-RESPONSE_ID=$(curl -s -X POST $BASE_URL/responses \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "questionnaireId": "ca660e12-24b7-416e-b154-1085e6f9e469",
-    "latitude": -12.0464,
-    "longitude": -77.0428,
-    "gpsAccuracy": 5.2,
-    "answers": {
-      "a16fc7dc-50e8-4d7f-87c6-a39dc82d33b1": "Prueba API",
-      "b0d72288-5d8d-4920-9b4b-2b82d02ff39f": ["Excelente"]
-    }
-  }' | jq -r .id)
-
-echo "Respuesta creada: $RESPONSE_ID"
-
-echo "✏️ 4. Actualizar respuesta..."
-curl -s -X PATCH $BASE_URL/responses/$RESPONSE_ID \
+echo ""
+echo "� 2. Creando respuesta con estructura JSON flexible..."
+CREATE_RESPONSE=$(curl -s -X POST $BASE_URL/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
+    "surveyId": "local_actors_interview_v1",
     "answers": {
-      "a16fc7dc-50e8-4d7f-87c6-a39dc82d33b1": "Prueba API ACTUALIZADA"
+      "fullname": "Juan Pérez García",
+      "age": "32",
+      "occupation": "Ingeniero Ambiental",
+      "satisfaction_rating": "excellent",
+      "services_used": ["consulting", "training", "support"],
+      "feedback": "Excelente servicio, muy profesional",
+      "would_recommend": true,
+      "contact_preference": "email",
+      "additional_comments": "Me gustaría recibir más información sobre nuevos servicios"
+    },
+    "metadata": {
+      "location": {
+        "latitude": -12.0464,
+        "longitude": -77.0428,
+        "accuracy": 5.2,
+        "city": "Lima",
+        "country": "Peru"
+      },
+      "device": {
+        "userAgent": "TestScript/1.0",
+        "platform": "API_Test",
+        "version": "1.0.0"
+      },
+      "survey_info": {
+        "start_time": "2025-12-26T10:00:00Z",
+        "duration_seconds": 180,
+        "completion_percentage": 100,
+        "language": "es"
+      },
+      "custom_fields": {
+        "interviewer_id": "TEST001",
+        "location_type": "office",
+        "interview_method": "in_person"
+      }
     }
-  }' | jq .
+  }')
 
-echo "✅ 5. Finalizar respuesta..."
-curl -s -X PATCH $BASE_URL/responses/$RESPONSE_ID/finalize \
-  -H "Authorization: Bearer $TOKEN" | jq .
+RESPONSE_ID=$(echo $CREATE_RESPONSE | jq -r .id)
+echo "✅ Respuesta creada:"
+echo $CREATE_RESPONSE | jq .
+echo ""
 
-echo "📊 6. Listar todas las respuestas..."
-curl -s -X GET $BASE_URL/responses \
-  -H "Authorization: Bearer $TOKEN" | jq .
+echo "📝 3. Actualizando respuesta (merge de datos)..."
+UPDATE_RESPONSE=$(curl -s -X PATCH $BASE_URL/responses/$RESPONSE_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "answers": {
+      "fullname": "Juan Carlos Pérez García",
+      "phone": "+51 999 888 777",
+      "feedback": "Excelente servicio, muy profesional. Actualizado después de más reflexión.",
+      "new_suggestion": "Sería bueno tener una app móvil"
+    },
+    "metadata": {
+      "location": {
+        "latitude": -12.1000,
+        "longitude": -77.1000,
+        "accuracy": 3.8
+      },
+      "survey_info": {
+        "completion_percentage": 95,
+        "last_update": "2025-12-26T10:15:00Z"
+      }
+    }
+  }')
 
-echo "🗑️ 7. Eliminar respuesta..."
-curl -s -X DELETE $BASE_URL/responses/$RESPONSE_ID \
-  -H "Authorization: Bearer $TOKEN" | jq .
+echo "✅ Respuesta actualizada:"
+echo $UPDATE_RESPONSE | jq .
+echo ""
 
-echo "✨ Pruebas completadas!"
+echo "🔍 4. Consultando respuesta completa..."
+FULL_RESPONSE=$(curl -s -X GET $BASE_URL/responses/$RESPONSE_ID \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "✅ Respuesta completa:"
+echo $FULL_RESPONSE | jq .
+echo ""
+
+echo "📊 5. Listando todas las respuestas..."
+ALL_RESPONSES=$(curl -s -X GET $BASE_URL/responses \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "✅ Lista de respuestas:"
+echo $ALL_RESPONSES | jq '. | length' | xargs echo "Total de respuestas:"
+echo ""
+
+echo "🔒 6. Finalizando respuesta..."
+FINALIZE_RESPONSE=$(curl -s -X PATCH $BASE_URL/responses/$RESPONSE_ID/finalize \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "✅ Respuesta finalizada:"
+echo $FINALIZE_RESPONSE | jq .status
+echo ""
+
+echo "� 7. Filtrar solo respuestas finalizadas..."
+FINAL_RESPONSES=$(curl -s -X GET "$BASE_URL/responses?status=final" \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "✅ Respuestas finalizadas:"
+echo $FINAL_RESPONSES | jq '. | length' | xargs echo "Total finalizadas:"
+echo ""
+
+echo "🔍 8. Filtrar por surveyId..."
+SURVEY_RESPONSES=$(curl -s -X GET "$BASE_URL/responses?surveyId=local_actors_interview_v1" \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "✅ Respuestas del survey específico:"
+echo $SURVEY_RESPONSES | jq '. | length' | xargs echo "Total del survey:"
+echo ""
+
+echo "🗑️ 9. Eliminando respuesta de prueba..."
+DELETE_RESPONSE=$(curl -s -X DELETE $BASE_URL/responses/$RESPONSE_ID \
+  -H "Authorization: Bearer $TOKEN")
+
+echo "✅ Respuesta eliminada:"
+echo $DELETE_RESPONSE | jq .
+echo ""
+
+echo "🎉 ¡Pruebas completadas exitosamente!"
+echo "   - Estructura JSON flexible: ✅"
+echo "   - Merge automático en actualizaciones: ✅"
+echo "   - Metadata personalizada: ✅"
+echo "   - Filtros por surveyId y status: ✅"
+echo "   - Estados draft/final: ✅"
 ```
+
+### Paso 3: Prueba Manual Individual
+
+#### 3.1 Login y obtener token:
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@sacifor.com",
+    "password": "admin123"
+  }' | jq .access_token
+```
+
+#### 3.2 Crear respuesta con ID personalizado:
+```bash
+curl -X POST http://localhost:3000/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "responseId": "CUSTOM_ID_001",
+    "surveyId": "customer_satisfaction_2025",
+    "answers": {
+      "customer_name": "María López",
+      "service_rating": 5,
+      "would_recommend": true,
+      "improvement_areas": ["speed", "price"],
+      "comments": "Muy buen servicio en general"
+    },
+    "metadata": {
+      "channel": "web_form",
+      "campaign_id": "summer_2025",
+      "referrer": "google_ads"
+    }
+  }'
+```
+
+#### 3.3 Verificar flexibilidad del merge:
+```bash
+curl -X PATCH http://localhost:3000/responses/CUSTOM_ID_001 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "answers": {
+      "follow_up_date": "2025-01-15",
+      "priority_level": "high"
+    },
+    "metadata": {
+      "last_interaction": "2025-12-26T15:30:00Z"
+    }
+  }'
+```
+
+### Paso 4: Validar Resultados
+
+Cada prueba debe mostrar:
+- ✅ **Estructura flexible**: Cualquier JSON válido se acepta
+- ✅ **Merge inteligente**: Los updates se combinan, no reemplazan
+- ✅ **IDs personalizados**: Se puede enviar responseId o dejar que se genere
+- ✅ **Metadata rica**: Información adicional estructurada
+- ✅ **Filtros funcionales**: Por surveyId y status
+- ✅ **Estados correctos**: draft → final → solo lectura para USER
 
 ---

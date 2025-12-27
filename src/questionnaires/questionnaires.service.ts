@@ -84,7 +84,6 @@ export class QuestionnairesService {
           options: question.options,
           isRequired: question.isRequired,
           order: question.order,
-          helpText: question.helpText,
         })),
     };
   }

@@ -3,13 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ResponsesService } from './responses.service';
 import { ResponsesController } from './responses.controller';
 import { Response } from './entities/response.entity';
-import { ResponseValue } from './entities/response-value.entity';
-import { Questionnaire } from '../questionnaires/entities/questionnaire.entity';
-import { Question } from '../questionnaires/entities/question.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Response, ResponseValue, Questionnaire, Question])
+    TypeOrmModule.forFeature([Response])
   ],
   controllers: [ResponsesController],
   providers: [ResponsesService],

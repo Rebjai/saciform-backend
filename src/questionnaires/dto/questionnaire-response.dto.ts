@@ -5,7 +5,6 @@ export class QuestionResponseDto {
   options?: string[];
   isRequired: boolean;
   order: number;
-  helpText?: string;
 }
 
 export class QuestionnaireResponseDto {

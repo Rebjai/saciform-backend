@@ -1,23 +1,19 @@
-import { IsNotEmpty, IsOptional, IsArray, IsNumber, IsString, IsUUID, IsObject } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsObject } from 'class-validator';
 
 export class CreateResponseDto {
+  @IsOptional()
+  @IsString()
+  responseId?: string; // ID opcional, si no se envía se genera automáticamente
+
   @IsNotEmpty()
-  @IsUUID()
-  questionnaireId: string;
+  @IsString()
+  surveyId: string; // ID del survey (ej: "local_actors_interview_v1")
 
-  @IsOptional()
-  @IsNumber()
-  latitude?: number;
-
-  @IsOptional()
-  @IsNumber()
-  longitude?: number;
-
-  @IsOptional()
-  @IsNumber()
-  gpsAccuracy?: number;
+  @IsNotEmpty()
+  @IsObject()
+  answers: Record<string, any>; // Respuestas en formato JSON libre
 
   @IsOptional()
   @IsObject()
-  answers?: Record<string, any>; // { "questionId": "valor", "questionId2": ["opcion1", "opcion2"] }
+  metadata?: Record<string, any>; // Metadata opcional (userAgent, location, etc.)
 }
