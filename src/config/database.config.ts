@@ -15,6 +15,7 @@ export const getDatabaseConfig = (
     __dirname + '/../teams/entities/*.entity{.ts,.js}',
     __dirname + '/../questionnaires/entities/*.entity{.ts,.js}',
     __dirname + '/../responses/entities/*.entity{.ts,.js}',
+    __dirname + '/../files/entities/*.entity{.ts,.js}',
   ],
   synchronize: configService.get<string>('NODE_ENV') === 'development',
   logging: configService.get<string>('NODE_ENV') === 'development',
