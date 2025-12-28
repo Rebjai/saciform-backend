@@ -1,4 +1,4 @@
-import { IsOptional, IsObject } from 'class-validator';
+import { IsOptional, IsObject, IsNumber } from 'class-validator';
 
 export class UpdateResponseDto {
   @IsOptional()
@@ -8,4 +8,8 @@ export class UpdateResponseDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>; // Metadata actualizada
+
+  @IsOptional()
+  @IsNumber()
+  version?: number; // Versión para control de concurrencia
 }

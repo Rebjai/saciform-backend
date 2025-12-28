@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsObject } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsObject, IsNumber } from 'class-validator';
 
 export class CreateResponseDto {
   @IsOptional()
@@ -16,4 +16,9 @@ export class CreateResponseDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>; // Metadata opcional (userAgent, location, etc.)
+
+  // Campo de sincronización
+  @IsOptional()
+  @IsNumber()
+  version?: number; // Versión del cliente (para detección de conflictos)
 }

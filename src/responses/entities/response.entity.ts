@@ -31,6 +31,10 @@ export class Response {
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>;
 
+  // Campo para sincronización offline/online - control de concurrencia
+  @Column({ type: 'int', default: 1 })
+  version: number; // Incrementa en cada modificación para detectar conflictos
+
   @Column({
     type: 'enum',
     enum: ResponseStatus,

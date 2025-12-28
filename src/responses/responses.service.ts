@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Response } from './entities/response.entity';
@@ -14,7 +14,7 @@ export class ResponsesService {
   ) {}
 
   async create(createResponseDto: CreateResponseDto, userId: string, includeFull = false) {
-    const { responseId, surveyId, answers, metadata } = createResponseDto;
+    const { responseId, surveyId, answers, metadata, version } = createResponseDto;
 
     // Crear la respuesta con el ID proporcionado o generar uno automático
     const response = this.responsesRepository.create({
@@ -24,6 +24,7 @@ export class ResponsesService {
       metadata,
       userId,
       status: ResponseStatus.DRAFT,
+      version: version || 1, // Versión inicial si no se especifica
     });
 
     const savedResponse = await this.responsesRepository.save(response);
@@ -62,7 +63,12 @@ export class ResponsesService {
       throw new BadRequestException('No puedes modificar una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
     }
 
-    const { answers, metadata } = updateResponseDto;
+    const { answers, metadata, version } = updateResponseDto;
+
+    // Verificar conflicto de versión si se especifica
+    if (version !== undefined && version !== response.version) {
+      throw new ConflictException(`Version conflict: expected ${response.version}, received ${version}`);
+    }
 
     // Preparar datos para actualizar
     const updateData: any = {};
@@ -76,6 +82,9 @@ export class ResponsesService {
       // Merge de metadata existente con nuevo
       updateData.metadata = { ...response.metadata, ...metadata };
     }
+
+    // Incrementar versión automáticamente en cada update
+    updateData.version = response.version + 1;
 
     // Actualizar la respuesta
     await this.responsesRepository.update(id, updateData);
