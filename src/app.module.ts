@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { QuestionnairesModule } from './questionnaires/questionnaires.module';
 import { ResponsesModule } from './responses/responses.module';
 import { DatabaseModule } from './database/database.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DatabaseModule } from './database/database.module';
     QuestionnairesModule,
     ResponsesModule,
     DatabaseModule,
+    FilesModule,
   ],
   controllers: [],
   providers: [],

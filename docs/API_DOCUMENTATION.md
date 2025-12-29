@@ -316,7 +316,193 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 
 ---
 
-## 🔧 4. Estructura de Datos JSON
+## � 4. Gestión de Archivos
+
+### POST /files/upload
+Subir una imagen asociada a una respuesta.
+
+**Headers:**
+```
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+**Form Data:**
+- `file`: Archivo de imagen (JPG, JPEG, PNG, WebP)
+- `responseId`: UUID de la respuesta a la que pertenece la imagen
+- `fieldName`: (Opcional) Nombre del campo en el cuestionario
+
+**Request:**
+```bash
+curl -X POST http://localhost:3000/files/upload \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@/path/to/image.jpg" \
+  -F "responseId=550e8400-e29b-41d4-a716-446655440000" \
+  -F "fieldName=foto_fachada"
+```
+
+**Response:**
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "responseId": "550e8400-e29b-41d4-a716-446655440000",
+  "filename": "image.jpg",
+  "mimeType": "image/jpeg",
+  "fileSize": 2048576,
+  "createdAt": "2025-12-28T15:30:00.000Z",
+  "isOptimized": true
+}
+```
+
+**Validaciones:**
+- Tipos permitidos: JPG, JPEG, PNG, WebP
+- Tamaño máximo: 10MB por archivo
+- responseId es requerido
+
+**Procesamiento automático:**
+- Archivo original guardado en: `uploads/originals/{uuid}.ext`
+- Versión optimizada WebP en: `uploads/optimized/{uuid}.webp`
+- Redimensión máxima: 1920x1080px
+- Calidad WebP: 85%
+
+### POST /files/upload-multiple
+Subir múltiples imágenes a la vez.
+
+**Form Data:**
+- `files`: Múltiples archivos de imagen (máximo 10)
+- `responseId`: UUID de la respuesta
+- `fieldName`: (Opcional) Nombre del campo
+
+**Request:**
+```bash
+curl -X POST http://localhost:3000/files/upload-multiple \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "files=@/path/to/image1.jpg" \
+  -F "files=@/path/to/image2.jpg" \
+  -F "responseId=550e8400-e29b-41d4-a716-446655440000" \
+  -F "fieldName=fotos_interiores"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174001",
+    "responseId": "550e8400-e29b-41d4-a716-446655440000",
+    "filename": "image1.jpg",
+    "mimeType": "image/jpeg",
+    "fileSize": 1024768,
+    "createdAt": "2025-12-28T15:30:00.000Z",
+    "isOptimized": true
+  },
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174002",
+    "responseId": "550e8400-e29b-41d4-a716-446655440000",
+    "filename": "image2.jpg",
+    "mimeType": "image/jpeg",
+    "fileSize": 2048576,
+    "createdAt": "2025-12-28T15:30:01.000Z",
+    "isOptimized": true
+  }
+]
+```
+
+### GET /files/response/:responseId
+Obtener todas las imágenes de una respuesta específica.
+
+**Request:**
+```bash
+curl -X GET http://localhost:3000/files/response/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "responseId": "550e8400-e29b-41d4-a716-446655440000",
+    "filename": "foto_fachada.jpg",
+    "mimeType": "image/jpeg",
+    "fileSize": 2048576,
+    "createdAt": "2025-12-28T15:30:00.000Z",
+    "isOptimized": true
+  },
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174001",
+    "responseId": "550e8400-e29b-41d4-a716-446655440000",
+    "filename": "foto_interior.jpg",
+    "mimeType": "image/jpeg",
+    "fileSize": 1024768,
+    "createdAt": "2025-12-28T15:31:00.000Z",
+    "isOptimized": true
+  }
+]
+```
+
+### DELETE /files/:id
+Eliminar una imagen y todas sus versiones.
+
+**Request:**
+```bash
+curl -X DELETE http://localhost:3000/files/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "message": "Archivo eliminado exitosamente"
+}
+```
+
+**Nota:** Elimina tanto el archivo original como la versión optimizada del sistema de archivos.
+
+### Integración con Respuestas
+
+#### Flujo Recomendado:
+1. **Crear respuesta** primero para obtener `responseId`
+2. **Subir imágenes** con ese `responseId`
+3. **Referenciar archivos** en el JSON de la respuesta
+
+**Ejemplo de integración:**
+```bash
+# 1. Crear respuesta
+curl -X POST http://localhost:3000/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "surveyId": "building_inspection_v1",
+    "answers": {
+      "inspector_name": "María González",
+      "building_type": "residential"
+    }
+  }'
+
+# Respuesta: { "id": "abc123...", ... }
+
+# 2. Subir fotos
+curl -X POST http://localhost:3000/files/upload \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@fachada.jpg" \
+  -F "responseId=abc123..." \
+  -F "fieldName=foto_fachada"
+
+# 3. Actualizar respuesta con referencias a archivos
+curl -X PATCH http://localhost:3000/responses/abc123... \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "answers": {
+      "fotos_fachada": ["file-uuid-1", "file-uuid-2"],
+      "fotos_interiores": ["file-uuid-3", "file-uuid-4"]
+    }
+  }'
+```
+
+---
+
+## �🔧 5. Estructura de Datos JSON
 
 ### Campos Principales:
 ```typescript
@@ -394,7 +580,7 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 
 ---
 
-## 👥 5. Roles y Permisos
+## 👥 6. Roles y Permisos
 
 ### USER (Aplicador)
 - ✅ Ver cuestionarios disponibles
@@ -402,8 +588,11 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 - ✅ Modificar sus propias respuestas en estado `draft`
 - ✅ Finalizar sus propias respuestas
 - ✅ Ver solo sus propias respuestas
+- ✅ Subir archivos asociados a sus respuestas
+- ✅ Eliminar archivos de sus propias respuestas
 - ❌ No puede modificar respuestas finalizadas
 - ❌ No puede ver respuestas de otros usuarios
+- ❌ No puede ver archivos de otros usuarios
 
 ### EDITOR
 - ✅ Todo lo que puede hacer USER
@@ -411,6 +600,7 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 - ✅ Ver todas las respuestas (actualmente - falta sistema de equipos)
 - ✅ Modificar respuestas finalizadas de cualquier usuario
 - ✅ Eliminar respuestas finalizadas
+- ✅ Ver y eliminar archivos de cualquier usuario
 
 ### ADMIN
 - ✅ Acceso total a todas las funcionalidades
@@ -418,10 +608,11 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 - ✅ Ver, modificar y eliminar cualquier respuesta
 - ✅ Modificar respuestas finalizadas
 - ✅ Gestión completa del sistema
+- ✅ Acceso completo a todos los archivos
 
 ---
 
-## 🚨 6. Manejo de Errores
+## 🚨 7. Manejo de Errores
 
 ### Códigos de Estado HTTP:
 - **200**: OK - Operación exitosa
@@ -462,11 +653,32 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
   "error": "Bad Request", 
   "statusCode": 400
 }
+
+// Archivo no válido
+{
+  "message": "Tipo de archivo no permitido. Solo se permiten: jpg, jpeg, png, webp",
+  "error": "Bad Request",
+  "statusCode": 400
+}
+
+// Archivo muy grande
+{
+  "message": "File too large",
+  "error": "Bad Request", 
+  "statusCode": 400
+}
+
+// ResponseId requerido para archivos
+{
+  "message": ["responseId must be a string"],
+  "error": "Bad Request",
+  "statusCode": 400
+}
 ```
 
 ---
 
-## 📱 7. Consideraciones para Frontend
+## 📱 8. Consideraciones para Frontend
 
 ### Autenticación:
 1. Hacer login y guardar el `access_token`
@@ -482,7 +694,9 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 2. **Definir surveyId** → Identificador único del cuestionario/formulario
 3. **Crear respuesta** → POST /responses con surveyId y estructura JSON flexible
 4. **Guardar progreso** → PATCH para hacer merge de nuevos datos
-5. **Finalizar** → PATCH /finalize cuando esté completo
+5. **Subir archivos** → POST /files/upload con responseId obtenido
+6. **Referenciar archivos** → Actualizar answers con IDs de archivos
+7. **Finalizar** → PATCH /finalize cuando esté completo
 
 ### Estructura JSON Flexible:
 - **Answers**: Campo JSON libre para todas las respuestas del formulario
@@ -501,10 +715,35 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 - Implementar guardado automático (cada X segundos)
 - Cache de respuestas en localStorage antes de enviar
 - Enviar metadata del dispositivo y ubicación cuando sea posible
+- **Subir archivos progresivamente** conforme el usuario los capture
+- **Comprimir imágenes localmente** antes de enviar para ahorrar ancho de banda
+- **Mostrar preview** de imágenes mientras se procesan en el servidor
+
+### Gestión de Archivos:
+- **Crear respuesta primero**: Siempre obtener `responseId` antes de subir archivos
+- **Upload progresivo**: Subir archivos conforme el usuario los capture/seleccione  
+- **Referencias en JSON**: Guardar IDs de archivos en el campo `answers`
+- **Optimización automática**: El backend genera versiones WebP automáticamente
+- **Validación local**: Verificar tipo y tamaño antes de enviar
+- **Manejo de errores**: Informar al usuario sobre archivos rechazados
+- **Preview local**: Mostrar preview mientras se sube al servidor
+
+### Estructura JSON con Archivos:
+```json
+{
+  "answers": {
+    "inspector_name": "María González", 
+    "foto_fachada": ["file-uuid-1", "file-uuid-2"],
+    "foto_interior": ["file-uuid-3"],
+    "foto_documentos": ["file-uuid-4", "file-uuid-5", "file-uuid-6"],
+    "observaciones": "Edificio en buen estado general"
+  }
+}
+```
 
 ---
 
-## 🧪 8. Proceso Completo de Prueba
+## 🧪 9. Proceso Completo de Prueba
 
 ### Paso 1: Preparar el Entorno
 ```bash
@@ -669,10 +908,56 @@ echo ""
 
 echo "🎉 ¡Pruebas completadas exitosamente!"
 echo "   - Estructura JSON flexible: ✅"
-echo "   - Merge automático en actualizaciones: ✅"
+echo "   - Merge automático en actualizaciones: ✅" 
 echo "   - Metadata personalizada: ✅"
 echo "   - Filtros por surveyId y status: ✅"
 echo "   - Estados draft/final: ✅"
+echo "   - Upload de archivos: ✅"
+echo "   - Optimización automática WebP: ✅"
+echo "   - Gestión de archivos por respuesta: ✅"
+```
+
+### Paso 4: Prueba de Upload de Archivos
+
+#### 4.1 Crear respuesta y subir archivo:
+```bash
+# Obtener token
+TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@sacifor.com","password":"admin123"}' \
+  | jq -r .access_token)
+
+# Crear respuesta
+RESPONSE=$(curl -s -X POST http://localhost:3000/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "surveyId": "inspection_form_v1",
+    "answers": {
+      "inspector": "Juan Pérez",
+      "location": "Edificio Central, Piso 5"
+    }
+  }')
+
+RESPONSE_ID=$(echo $RESPONSE | jq -r .id)
+
+# Subir archivo (reemplazar con ruta real)
+curl -X POST http://localhost:3000/files/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/path/to/test-image.jpg" \
+  -F "responseId=$RESPONSE_ID" \
+  -F "fieldName=foto_fachada"
+
+# Obtener archivos de la respuesta
+curl -s -X GET "http://localhost:3000/files/response/$RESPONSE_ID" \
+  -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+#### 4.2 Verificar optimización:
+```bash
+# Verificar que se crearon ambas versiones
+ls uploads/originals/    # Archivo original
+ls uploads/optimized/    # Archivo WebP optimizado
 ```
 
 ### Paso 3: Prueba Manual Individual
@@ -726,7 +1011,7 @@ curl -X PATCH http://localhost:3000/responses/CUSTOM_ID_001 \
   }'
 ```
 
-### Paso 4: Validar Resultados
+### Paso 5: Validar Resultados
 
 Cada prueba debe mostrar:
 - ✅ **Estructura flexible**: Cualquier JSON válido se acepta
@@ -735,5 +1020,9 @@ Cada prueba debe mostrar:
 - ✅ **Metadata rica**: Información adicional estructurada
 - ✅ **Filtros funcionales**: Por surveyId y status
 - ✅ **Estados correctos**: draft → final → solo lectura para USER
+- ✅ **Upload de archivos**: Subida exitosa con optimización automática
+- ✅ **Gestión por respuesta**: Archivos correctamente asociados
+- ✅ **Validaciones**: Tipos de archivo y tamaños respetados
+- ✅ **Almacenamiento dual**: Original + WebP optimizado
 
 ---
