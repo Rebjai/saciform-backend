@@ -4,11 +4,10 @@ import { Repository } from 'typeorm';
 import { File } from './entities/file.entity';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { FileResponseDto } from './dto/file-response.dto';
-import sharp from 'sharp';
 import { join, extname } from 'path';
 import { UPLOAD_PATHS } from '../common/multer.config';
-import { unlink, access, rename } from 'fs/promises';
-import { constants } from 'fs';
+import { unlink, rename } from 'fs/promises';
+import { createReadStream, existsSync } from 'fs';
 
 @Injectable()
 export class FilesService {
@@ -18,7 +17,7 @@ export class FilesService {
   ) {}
 
   /**
-   * Procesar archivo subido: guardar con nombre UUID y optimizar
+   * Procesar archivo subido: solo guardar y renombrar con UUID
    */
   async processUploadedFile(
     uploadedFile: Express.Multer.File,
@@ -35,14 +34,11 @@ export class FilesService {
 
       const savedFile = await this.filesRepository.save(file);
 
-      // Renombrar archivo con UUID
+      // Renombrar archivo con UUID (el frontend ya envió optimizada)
       const fileExtension = extname(uploadedFile.originalname);
-      const newOriginalPath = join(UPLOAD_PATHS.originals, `${savedFile.id}${fileExtension}`);
+      const finalPath = join(UPLOAD_PATHS.optimized, `${savedFile.id}${fileExtension}`);
       
-      await rename(uploadedFile.path, newOriginalPath);
-
-      // Optimizar imagen inmediatamente
-      await this.optimizeImage(savedFile.id, newOriginalPath);
+      await rename(uploadedFile.path, finalPath);
 
       return this.mapToResponseDto(savedFile);
     } catch (error) {
@@ -53,67 +49,29 @@ export class FilesService {
         console.error('Error removing uploaded file:', unlinkError);
       }
       
-      // Proporcionar información específica sobre el error
-      if (error.code === 'ENOENT') {
-        throw new BadRequestException('Archivo no encontrado durante el procesamiento');
-      } else if (error.code === 'EEXIST') {
-        throw new BadRequestException('Ya existe un archivo con ese nombre');
-      } else if (error.message?.includes('Sharp')) {
-        throw new BadRequestException('Error optimizando la imagen - formato no soportado');
-      } else {
-        throw new BadRequestException(`Error procesando el archivo: ${error.message || error}`);
-      }
+      throw new BadRequestException(`Error procesando el archivo: ${error.message || error}`);
     }
   }
 
   /**
-   * Optimizar imagen con Sharp - usa convención de nombres
+   * Obtener stream de archivo para servir
    */
-  private async optimizeImage(fileId: string, originalPath: string): Promise<void> {
-    try {
-      const optimizedPath = join(UPLOAD_PATHS.optimized, `${fileId}.webp`);
-
-      await sharp(originalPath)
-        .webp({ 
-          quality: 85,
-          effort: 4,
-        })
-        .resize({
-          width: 1920,
-          height: 1080,
-          fit: 'inside',
-          withoutEnlargement: true,
-        })
-        .toFile(optimizedPath);
-
-      // Solo mantener log de éxito de optimización
-      console.log(`Image optimized: ${fileId}`);
-    } catch (error) {
-      console.error(`Error optimizing image ${fileId}:`, error);
+  async getFileStream(fileId: string): Promise<{ file: File; stream: any }> {
+    const file = await this.filesRepository.findOne({ where: { id: fileId } });
+    
+    if (!file) {
+      throw new NotFoundException('Archivo no encontrado');
     }
-  }
 
-  /**
-   * Verificar si existe versión optimizada
-   */
-  private async isOptimized(fileId: string): Promise<boolean> {
-    try {
-      const optimizedPath = join(UPLOAD_PATHS.optimized, `${fileId}.webp`);
-      await access(optimizedPath, constants.F_OK);
-      return true;
-    } catch {
-      return false;
+    const fileExtension = extname(file.filename);
+    const filePath = join(UPLOAD_PATHS.optimized, `${fileId}${fileExtension}`);
+
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('Archivo físico no encontrado');
     }
-  }
 
-  /**
-   * Obtener rutas de archivos por convención
-   */
-  private getFilePaths(fileId: string, originalExtension: string) {
-    return {
-      original: join(UPLOAD_PATHS.originals, `${fileId}${originalExtension}`),
-      optimized: join(UPLOAD_PATHS.optimized, `${fileId}.webp`),
-    };
+    const stream = createReadStream(filePath);
+    return { file, stream };
   }
 
   /**
@@ -125,17 +83,11 @@ export class FilesService {
       order: { createdAt: 'DESC' },
     });
 
-    const results: FileResponseDto[] = [];
-    for (const file of files) {
-      const dto = await this.mapToResponseDto(file);
-      results.push(dto);
-    }
-
-    return results;
+    return files.map(file => this.mapToResponseDto(file));
   }
 
   /**
-   * Eliminar archivo y sus versiones
+   * Eliminar archivo completamente
    */
   async remove(id: string): Promise<void> {
     const file = await this.filesRepository.findOne({ where: { id } });
@@ -144,24 +96,26 @@ export class FilesService {
       throw new NotFoundException('Archivo no encontrado');
     }
 
-    // Obtener rutas por convención
+    // Obtener ruta del archivo (solo está en optimized)
     const fileExtension = extname(file.filename);
-    const paths = this.getFilePaths(id, fileExtension);
+    const filePath = join(UPLOAD_PATHS.optimized, `${id}${fileExtension}`);
 
-    // Eliminar archivos del sistema
-    await Promise.all([
-      unlink(paths.original).catch(err => console.error('Error deleting original:', err)),
-      unlink(paths.optimized).catch(err => console.error('Error deleting optimized:', err))
-    ]);
+    // Eliminar archivo del sistema
+    try {
+      await unlink(filePath);
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      // Continuar con eliminación de BD aunque falle el archivo físico
+    }
 
     // Eliminar registro de BD
     await this.filesRepository.delete(id);
   }
 
   /**
-   * Mapear entidad a DTO con información calculada
+   * Mapear entidad a DTO
    */
-  private async mapToResponseDto(file: File): Promise<FileResponseDto> {
+  private mapToResponseDto(file: File): FileResponseDto {
     return {
       id: file.id,
       responseId: file.responseId,
@@ -169,8 +123,8 @@ export class FilesService {
       mimeType: file.mimeType,
       fileSize: file.fileSize,
       createdAt: file.createdAt,
-      isOptimized: await this.isOptimized(file.id),
-      // URLs se pueden agregar aquí cuando se implemente servicio de archivos estáticos
+      isOptimized: true, // Frontend ya envió optimizada
+      url: `/files/serve/${file.id}`, // URL para servir la imagen
     };
   }
 }
