@@ -6,8 +6,7 @@ export class FileResponseDto {
   fileSize: number;
   createdAt: Date;
   
-  // URLs calculadas dinámicamente
-  originalUrl?: string;
-  optimizedUrl?: string;
-  isOptimized?: boolean; // Calculado por existencia de archivo
+  // URL para acceder al archivo optimizado
+  url?: string;
+  isOptimized?: boolean;
 }

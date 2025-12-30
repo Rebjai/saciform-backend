@@ -8,10 +8,9 @@ import { existsSync, mkdirSync } from 'fs';
 // Crear directorios si no existen
 const ensureUploadDirs = () => {
   const uploadDir = join(process.cwd(), 'uploads');
-  const originalsDir = join(uploadDir, 'originals');
   const optimizedDir = join(uploadDir, 'optimized');
 
-  [uploadDir, originalsDir, optimizedDir].forEach(dir => {
+  [uploadDir, optimizedDir].forEach(dir => {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
@@ -24,7 +23,8 @@ ensureUploadDirs();
 export const multerConfig: MulterOptions = {
   storage: diskStorage({
     destination: (req, file, cb) => {
-      const uploadPath = join(process.cwd(), 'uploads', 'originals');
+      // Las imágenes ya vienen optimizadas del frontend
+      const uploadPath = join(process.cwd(), 'uploads', 'optimized');
       cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
@@ -48,6 +48,5 @@ export const multerConfig: MulterOptions = {
 };
 
 export const UPLOAD_PATHS = {
-  originals: join(process.cwd(), 'uploads', 'originals'),
   optimized: join(process.cwd(), 'uploads', 'optimized'),
 };

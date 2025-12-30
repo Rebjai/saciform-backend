@@ -319,7 +319,7 @@ curl -X DELETE http://localhost:3000/responses/a7b51c88-0a01-4b4a-9f43-27bae002a
 ## � 4. Gestión de Archivos
 
 ### POST /files/upload
-Subir una imagen asociada a una respuesta.
+Subir una imagen optimizada asociada a una respuesta.
 
 **Headers:**
 ```
@@ -328,7 +328,7 @@ Content-Type: multipart/form-data
 ```
 
 **Form Data:**
-- `file`: Archivo de imagen (JPG, JPEG, PNG, WebP)
+- `file`: Archivo de imagen optimizada (JPG, JPEG, PNG, WebP)
 - `responseId`: UUID de la respuesta a la que pertenece la imagen
 - `fieldName`: (Opcional) Nombre del campo en el cuestionario
 
@@ -336,9 +336,8 @@ Content-Type: multipart/form-data
 ```bash
 curl -X POST http://localhost:3000/files/upload \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@/path/to/image.jpg" \
+  -F "file=@imagen_optimizada.jpg" \
   -F "responseId=550e8400-e29b-41d4-a716-446655440000" \
-  -F "fieldName=foto_fachada"
 ```
 
 **Response:**
@@ -346,11 +345,12 @@ curl -X POST http://localhost:3000/files/upload \
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "responseId": "550e8400-e29b-41d4-a716-446655440000",
-  "filename": "image.jpg",
+  "filename": "imagen_optimizada.jpg",
   "mimeType": "image/jpeg",
-  "fileSize": 2048576,
-  "createdAt": "2025-12-28T15:30:00.000Z",
-  "isOptimized": true
+  "fileSize": 245760,
+  "createdAt": "2025-12-29T15:30:00.000Z",
+  "isOptimized": true,
+  "url": "/files/serve/123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
@@ -359,11 +359,10 @@ curl -X POST http://localhost:3000/files/upload \
 - Tamaño máximo: 10MB por archivo
 - responseId es requerido
 
-**Procesamiento automático:**
-- Archivo original guardado en: `uploads/originals/{uuid}.ext`
-- Versión optimizada WebP en: `uploads/optimized/{uuid}.webp`
-- Redimensión máxima: 1920x1080px
-- Calidad WebP: 85%
+**Almacenamiento:**
+- El frontend debe enviar la imagen ya optimizada
+- Se guarda directamente en: `uploads/optimized/{uuid}.ext`
+- No se realiza procesamiento adicional en el backend
 
 ### POST /files/upload-multiple
 Subir múltiples imágenes a la vez.
@@ -392,8 +391,9 @@ curl -X POST http://localhost:3000/files/upload-multiple \
     "filename": "image1.jpg",
     "mimeType": "image/jpeg",
     "fileSize": 1024768,
-    "createdAt": "2025-12-28T15:30:00.000Z",
-    "isOptimized": true
+    "createdAt": "2025-12-29T15:30:00.000Z",
+    "isOptimized": true,
+    "url": "/files/serve/123e4567-e89b-12d3-a456-426614174001"
   },
   {
     "id": "123e4567-e89b-12d3-a456-426614174002",
@@ -401,8 +401,9 @@ curl -X POST http://localhost:3000/files/upload-multiple \
     "filename": "image2.jpg",
     "mimeType": "image/jpeg",
     "fileSize": 2048576,
-    "createdAt": "2025-12-28T15:30:01.000Z",
-    "isOptimized": true
+    "createdAt": "2025-12-29T15:30:01.000Z",
+    "isOptimized": true,
+    "url": "/files/serve/123e4567-e89b-12d3-a456-426614174002"
   }
 ]
 ```
@@ -424,9 +425,10 @@ curl -X GET http://localhost:3000/files/response/550e8400-e29b-41d4-a716-4466554
     "responseId": "550e8400-e29b-41d4-a716-446655440000",
     "filename": "foto_fachada.jpg",
     "mimeType": "image/jpeg",
-    "fileSize": 2048576,
-    "createdAt": "2025-12-28T15:30:00.000Z",
-    "isOptimized": true
+    "fileSize": 245760,
+    "createdAt": "2025-12-29T15:30:00.000Z",
+    "isOptimized": true,
+    "url": "/files/serve/123e4567-e89b-12d3-a456-426614174000"
   },
   {
     "id": "123e4567-e89b-12d3-a456-426614174001",
@@ -434,14 +436,30 @@ curl -X GET http://localhost:3000/files/response/550e8400-e29b-41d4-a716-4466554
     "filename": "foto_interior.jpg",
     "mimeType": "image/jpeg",
     "fileSize": 1024768,
-    "createdAt": "2025-12-28T15:31:00.000Z",
-    "isOptimized": true
+    "createdAt": "2025-12-29T15:31:00.000Z",
+    "isOptimized": true,
+    "url": "/files/serve/123e4567-e89b-12d3-a456-426614174001"
   }
 ]
 ```
 
+### GET /files/serve/:fileId
+Servir una imagen optimizada directamente.
+
+**Request:**
+```bash
+curl -X GET http://localhost:3000/files/serve/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+- **Content-Type**: image/jpeg (o el tipo correspondiente)
+- **Content-Disposition**: inline; filename="foto_fachada.jpg"
+- **Cache-Control**: public, max-age=31536000
+- **Body**: Archivo de imagen binario
+
 ### DELETE /files/:id
-Eliminar una imagen y todas sus versiones.
+Eliminar una imagen completamente.
 
 **Request:**
 ```bash
@@ -456,14 +474,16 @@ curl -X DELETE http://localhost:3000/files/123e4567-e89b-12d3-a456-426614174000 
 }
 ```
 
-**Nota:** Elimina tanto el archivo original como la versión optimizada del sistema de archivos.
+**Nota:** Elimina el archivo físico del servidor y el registro de la base de datos.
 
 ### Integración con Respuestas
 
 #### Flujo Recomendado:
-1. **Crear respuesta** primero para obtener `responseId`
-2. **Subir imágenes** con ese `responseId`
-3. **Referenciar archivos** en el JSON de la respuesta
+1. **Optimizar imagen en frontend** (redimensionar, comprimir, convertir formato)
+2. **Crear respuesta** para obtener `responseId`
+3. **Subir imagen optimizada** con ese `responseId`
+4. **Usar URL devuelta** para mostrar imagen en la interfaz
+5. **Referenciar archivos** por ID en el JSON de la respuesta
 
 **Ejemplo de integración:**
 ```bash
@@ -481,10 +501,10 @@ curl -X POST http://localhost:3000/responses \
 
 # Respuesta: { "id": "abc123...", ... }
 
-# 2. Subir fotos
+# 2. Subir imagen ya optimizada desde frontend
 curl -X POST http://localhost:3000/files/upload \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@fachada.jpg" \
+  -F "file=@imagen_optimizada.jpg" \
   -F "responseId=abc123..." \
   -F "fieldName=foto_fachada"
 
@@ -498,6 +518,10 @@ curl -X PATCH http://localhost:3000/responses/abc123... \
       "fotos_interiores": ["file-uuid-3", "file-uuid-4"]
     }
   }'
+
+# 4. Mostrar imagen usando la URL
+# GET http://localhost:3000/files/serve/file-uuid-1
+```
 ```
 
 ---
@@ -720,13 +744,42 @@ curl -X PATCH http://localhost:3000/responses/abc123... \
 - **Mostrar preview** de imágenes mientras se procesan en el servidor
 
 ### Gestión de Archivos:
+- **Optimizar en frontend**: Redimensionar y comprimir antes de enviar
 - **Crear respuesta primero**: Siempre obtener `responseId` antes de subir archivos
-- **Upload progresivo**: Subir archivos conforme el usuario los capture/seleccione  
+- **Upload directo**: Subir imágenes ya optimizadas al backend
+- **URLs automáticas**: El backend devuelve URL para servir la imagen
 - **Referencias en JSON**: Guardar IDs de archivos en el campo `answers`
-- **Optimización automática**: El backend genera versiones WebP automáticamente
 - **Validación local**: Verificar tipo y tamaño antes de enviar
 - **Manejo de errores**: Informar al usuario sobre archivos rechazados
-- **Preview local**: Mostrar preview mientras se sube al servidor
+- **Cache del navegador**: Las imágenes se cachean automáticamente por 1 año
+
+### Ejemplo de Optimización en Frontend:
+```javascript
+// 1. Optimizar imagen localmente (Canvas, librería de compresión, etc.)
+const optimizedFile = await compressImage(originalFile, {
+  maxWidth: 1920,
+  maxHeight: 1080,
+  quality: 0.85,
+  type: 'image/webp'
+});
+
+// 2. Enviar imagen optimizada al backend
+const formData = new FormData();
+formData.append('file', optimizedFile);
+formData.append('responseId', responseId);
+
+const response = await fetch('/files/upload', {
+  method: 'POST',
+  body: formData,
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+const result = await response.json();
+// result.url = "/files/serve/uuid" - listo para mostrar
+
+// 3. Mostrar imagen usando la URL devuelta
+<img src={`${API_BASE_URL}${result.url}`} alt={result.filename} />
+```
 
 ### Estructura JSON con Archivos:
 ```json
@@ -912,14 +965,14 @@ echo "   - Merge automático en actualizaciones: ✅"
 echo "   - Metadata personalizada: ✅"
 echo "   - Filtros por surveyId y status: ✅"
 echo "   - Estados draft/final: ✅"
-echo "   - Upload de archivos: ✅"
-echo "   - Optimización automática WebP: ✅"
+echo "   - Upload de archivos optimizados: ✅"
+echo "   - Servir imágenes con cache: ✅"
 echo "   - Gestión de archivos por respuesta: ✅"
 ```
 
 ### Paso 4: Prueba de Upload de Archivos
 
-#### 4.1 Crear respuesta y subir archivo:
+#### 4.1 Crear respuesta y subir archivo optimizado:
 ```bash
 # Obtener token
 TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
@@ -941,23 +994,26 @@ RESPONSE=$(curl -s -X POST http://localhost:3000/responses \
 
 RESPONSE_ID=$(echo $RESPONSE | jq -r .id)
 
-# Subir archivo (reemplazar con ruta real)
+# Subir archivo optimizado (reemplazar con ruta real)
 curl -X POST http://localhost:3000/files/upload \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/test-image.jpg" \
+  -F "file=@/path/to/optimized-image.jpg" \
   -F "responseId=$RESPONSE_ID" \
   -F "fieldName=foto_fachada"
 
 # Obtener archivos de la respuesta
 curl -s -X GET "http://localhost:3000/files/response/$RESPONSE_ID" \
   -H "Authorization: Bearer $TOKEN" | jq .
+
+# Servir imagen directamente
+curl -s -X GET "http://localhost:3000/files/serve/FILE_ID" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-#### 4.2 Verificar optimización:
+#### 4.2 Verificar que la imagen se sirve correctamente:
 ```bash
-# Verificar que se crearon ambas versiones
-ls uploads/originals/    # Archivo original
-ls uploads/optimized/    # Archivo WebP optimizado
+# Las imágenes se almacenan directamente optimizadas
+ls uploads/optimized/    # Solo archivos optimizados
 ```
 
 ### Paso 3: Prueba Manual Individual
@@ -1020,9 +1076,10 @@ Cada prueba debe mostrar:
 - ✅ **Metadata rica**: Información adicional estructurada
 - ✅ **Filtros funcionales**: Por surveyId y status
 - ✅ **Estados correctos**: draft → final → solo lectura para USER
-- ✅ **Upload de archivos**: Subida exitosa con optimización automática
+- ✅ **Upload de archivos optimizados**: Frontend envía imágenes ya procesadas
+- ✅ **Servir archivos**: URLs funcionan correctamente con cache
 - ✅ **Gestión por respuesta**: Archivos correctamente asociados
 - ✅ **Validaciones**: Tipos de archivo y tamaños respetados
-- ✅ **Almacenamiento dual**: Original + WebP optimizado
+- ✅ **Almacenamiento simple**: Solo archivos optimizados en servidor
 
 ---

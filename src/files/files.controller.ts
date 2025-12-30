@@ -10,8 +10,12 @@ import {
   UploadedFiles,
   UseGuards,
   BadRequestException,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
+import type { Response as ExpressResponse } from 'express';
 import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { FileResponseDto } from './dto/file-response.dto';
@@ -74,6 +78,25 @@ export class FilesController {
     @Param('responseId') responseId: string,
   ): Promise<FileResponseDto[]> {
     return await this.filesService.findByResponseId(responseId);
+  }
+
+  /**
+   * Servir imagen optimizada
+   */
+  @Get('serve/:fileId')
+  async serveFile(
+    @Param('fileId') fileId: string,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<StreamableFile> {
+    const { file, stream } = await this.filesService.getFileStream(fileId);
+    
+    res.set({
+      'Content-Type': file.mimeType,
+      'Content-Disposition': `inline; filename="${file.filename}"`,
+      'Cache-Control': 'public, max-age=31536000', // 1 año de cache
+    });
+
+    return new StreamableFile(stream);
   }
 
   /**
