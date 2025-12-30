@@ -13,18 +13,28 @@ export class ResponsesService {
     private responsesRepository: Repository<Response>,
   ) {}
 
-  async create(createResponseDto: CreateResponseDto, userId: string, includeFull = false) {
-    const { responseId, surveyId, answers, metadata, version } = createResponseDto;
+  async create(createResponseDto: CreateResponseDto, requestingUserId: string, requestingUserRole: string, includeFull = false) {
+    const { 
+      surveyId, 
+      answers, 
+      metadata, 
+      userId,
+      municipalityId, 
+      status 
+    } = createResponseDto;
 
-    // Crear la respuesta con el ID proporcionado o generar uno automático
+    // Determinar el userId final - usar el proporcionado o el del usuario autenticado
+    const finalUserId = userId || requestingUserId;
+
+    // Crear la respuesta
     const response = this.responsesRepository.create({
-      id: responseId, // Si se envía responseId, se usa; sino TypeORM genera uno
       surveyId,
       answers,
       metadata,
-      userId,
-      status: ResponseStatus.DRAFT,
-      version: version || 1, // Versión inicial si no se especifica
+      userId: finalUserId,
+      municipalityId,
+      status: status || ResponseStatus.DRAFT,
+      lastModifiedBy: requestingUserId,
     });
 
     const savedResponse = await this.responsesRepository.save(response);
@@ -63,12 +73,7 @@ export class ResponsesService {
       throw new BadRequestException('No puedes modificar una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
     }
 
-    const { answers, metadata, version } = updateResponseDto;
-
-    // Verificar conflicto de versión si se especifica
-    if (version !== undefined && version !== response.version) {
-      throw new ConflictException(`Version conflict: expected ${response.version}, received ${version}`);
-    }
+    const { answers, metadata } = updateResponseDto;
 
     // Preparar datos para actualizar
     const updateData: any = {};
@@ -83,8 +88,8 @@ export class ResponsesService {
       updateData.metadata = { ...response.metadata, ...metadata };
     }
 
-    // Incrementar versión automáticamente en cada update
-    updateData.version = response.version + 1;
+    // Registrar quién modificó la respuesta
+    updateData.lastModifiedBy = userId;
 
     // Actualizar la respuesta
     await this.responsesRepository.update(id, updateData);
@@ -111,7 +116,6 @@ export class ResponsesService {
   async findAll(userId?: string, surveyId?: string, status?: ResponseStatus) {
     const queryBuilder = this.responsesRepository
       .createQueryBuilder('response')
-      .leftJoinAndSelect('response.user', 'user')
       .orderBy('response.createdAt', 'DESC');
 
     if (userId) {
@@ -131,8 +135,7 @@ export class ResponsesService {
 
   async findOne(id: string) {
     const response = await this.responsesRepository.findOne({
-      where: { id },
-      relations: ['user'],
+      where: { id }
     });
 
     if (!response) {
@@ -155,7 +158,6 @@ export class ResponsesService {
 
     await this.responsesRepository.update(id, {
       status: ResponseStatus.FINAL,
-      finalizedAt: new Date(),
     });
 
     return this.findOne(id);

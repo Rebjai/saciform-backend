@@ -7,6 +7,7 @@ import { QuestionnairesModule } from './questionnaires/questionnaires.module';
 import { ResponsesModule } from './responses/responses.module';
 import { DatabaseModule } from './database/database.module';
 import { FilesModule } from './files/files.module';
+import { MunicipalitiesModule } from './municipalities/municipalities.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FilesModule } from './files/files.module';
     ResponsesModule,
     DatabaseModule,
     FilesModule,
+    MunicipalitiesModule,
   ],
   controllers: [],
   providers: [],

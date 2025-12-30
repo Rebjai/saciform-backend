@@ -1,10 +1,7 @@
-import { IsNotEmpty, IsOptional, IsString, IsObject, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsObject, IsUUID, IsEnum } from 'class-validator';
+import { ResponseStatus } from '../../common/enums';
 
 export class CreateResponseDto {
-  @IsOptional()
-  @IsString()
-  responseId?: string; // ID opcional, si no se envía se genera automáticamente
-
   @IsNotEmpty()
   @IsString()
   surveyId: string; // ID del survey (ej: "local_actors_interview_v1")
@@ -17,8 +14,16 @@ export class CreateResponseDto {
   @IsObject()
   metadata?: Record<string, any>; // Metadata opcional (userAgent, location, etc.)
 
-  // Campo de sincronización
+  // Campos según requerimientos
   @IsOptional()
-  @IsNumber()
-  version?: number; // Versión del cliente (para detección de conflictos)
+  @IsUUID()
+  userId?: string; // Usuario específico (para casos administrativos)
+
+  @IsOptional()
+  @IsUUID()
+  municipalityId?: string; // Asociar respuesta a municipio
+
+  @IsOptional()
+  @IsEnum(ResponseStatus)
+  status?: ResponseStatus; // Estado inicial (draft por defecto)
 }
