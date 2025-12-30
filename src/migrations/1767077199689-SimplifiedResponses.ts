@@ -6,7 +6,7 @@ export class SimplifiedResponses1767077199689 implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE \`responses\` DROP FOREIGN KEY \`FK_a9814d310833f66dab2c24314d2\``);
         await queryRunner.query(`DROP INDEX \`IDX_FILES_RESPONSE_ID\` ON \`files\``);
-        await queryRunner.query(`CREATE TABLE \`municipalities\` (\`id\` varchar(36) NOT NULL, \`name\` varchar(100) NOT NULL, \`district\` varchar(50) NULL, \`region\` varchar(100) NULL, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
+        await queryRunner.query(`CREATE TABLE \`municipalities\` (\`id\` varchar(36) NOT NULL, \`code\` varchar(20) NOT NULL, \`name\` varchar(100) NOT NULL, \`district\` varchar(100) NOT NULL, \`isActive\` tinyint NOT NULL DEFAULT 1, \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), UNIQUE INDEX \`IDX_MUNICIPALITIES_CODE\` (\`code\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`ALTER TABLE \`responses\` DROP COLUMN \`finalizedAt\``);
         await queryRunner.query(`ALTER TABLE \`responses\` DROP COLUMN \`version\``);
         await queryRunner.query(`ALTER TABLE \`responses\` ADD \`municipalityId\` varchar(255) NULL`);
