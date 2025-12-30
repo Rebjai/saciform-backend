@@ -4,11 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
 import { ResponseStatus } from '../../common/enums';
-import { User } from '../../users/entities/user.entity';
 
 /**
  * Entidad Response - Versión simplificada
@@ -31,10 +28,6 @@ export class Response {
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>;
 
-  // Campo para sincronización offline/online - control de concurrencia
-  @Column({ type: 'int', default: 1 })
-  version: number; // Incrementa en cada modificación para detectar conflictos
-
   @Column({
     type: 'enum',
     enum: ResponseStatus,
@@ -42,20 +35,19 @@ export class Response {
   })
   status: ResponseStatus;
 
-  @Column({ type: 'datetime', nullable: true })
-  finalizedAt: Date;
-
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // Relación con el usuario que aplicó la encuesta
-  @ManyToOne(() => User, { nullable: false })
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
+  // Referencias por ID (sin relaciones para simplicidad)
   @Column()
   userId: string;
+
+  @Column({ nullable: true })
+  municipalityId?: string;
+
+  @Column()
+  lastModifiedBy: string;
 }

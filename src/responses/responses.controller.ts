@@ -30,7 +30,12 @@ export class ResponsesController {
     @Request() req,
     @Query('include') include?: string
   ) {
-    return this.responsesService.create(createResponseDto, req.user.id, include === 'full');
+    return this.responsesService.create(
+      createResponseDto, 
+      req.user.id, 
+      req.user.role,
+      include === 'full'
+    );
   }
 
   @Get()
