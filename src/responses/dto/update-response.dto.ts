@@ -1,4 +1,5 @@
-import { IsOptional, IsObject } from 'class-validator';
+
+import { IsOptional, IsObject, IsUUID } from 'class-validator';
 
 export class UpdateResponseDto {
   @IsOptional()
@@ -8,4 +9,12 @@ export class UpdateResponseDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>; // Metadata actualizada
+
+  @IsOptional()
+  @IsUUID()
+  userId?: string; // Usuario específico (para casos administrativos)
+
+  @IsOptional()
+  @IsUUID()
+  municipalityId?: string; // Asociar respuesta a municipio
 }
