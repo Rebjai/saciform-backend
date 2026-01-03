@@ -8,6 +8,7 @@ import { ResponsesModule } from './responses/responses.module';
 import { DatabaseModule } from './database/database.module';
 import { FilesModule } from './files/files.module';
 import { MunicipalitiesModule } from './municipalities/municipalities.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MunicipalitiesModule } from './municipalities/municipalities.module';
     DatabaseModule,
     FilesModule,
     MunicipalitiesModule,
+    UsersModule,
   ],
   controllers: [],
   providers: [],

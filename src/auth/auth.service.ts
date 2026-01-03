@@ -18,7 +18,7 @@ export class AuthService {
 
     // Buscar usuario por email (incluir password)
     const user = await this.usersRepository.findOne({
-      where: { email, isActive: true },
+      where: { email },
       select: ['id', 'email', 'name', 'role', 'password', 'teamId'],
     });
 
@@ -54,7 +54,7 @@ export class AuthService {
 
   async validateUser(userId: string): Promise<User | null> {
     return this.usersRepository.findOne({
-      where: { id: userId, isActive: true },
+      where: { id: userId },
     });
   }
 }

@@ -48,7 +48,6 @@ export class DatabaseSeeder {
         password: 'admin123', // Texto plano - el hook @BeforeInsert() se encarga del hash
         role: UserRole.ADMIN,
         teamId: adminTeam.id,
-        isActive: true,
       });
 
       await this.usersRepository.save(adminUser);
@@ -91,7 +90,6 @@ export class DatabaseSeeder {
         password: 'editor123', // Texto plano - el hook @BeforeInsert() se encarga del hash
         role: UserRole.EDITOR,
         teamId: fieldTeam.id,
-        isActive: true,
       });
 
       await this.usersRepository.save(editorUser);
@@ -115,7 +113,6 @@ export class DatabaseSeeder {
         password: 'user123', // Texto plano - el hook @BeforeInsert() se encarga del hash
         role: UserRole.USER,
         teamId: fieldTeam.id,
-        isActive: true,
       });
 
       await this.usersRepository.save(normalUser);

@@ -36,21 +36,18 @@ export class User {
   })
   role: UserRole;
 
-  @Column({ default: true })
-  isActive: boolean;
-
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // Relación: Muchos usuarios pertenecen a un equipo
-  @ManyToOne('Team', 'users', { nullable: false })
+  // Relación: Muchos usuarios pertenecen a un equipo (opcional)
+  @ManyToOne('Team', 'users', { nullable: true })
   @JoinColumn({ name: 'teamId' })
   team: any;
 
-  @Column()
+  @Column({ nullable: true })
   teamId: string;
 
   // Hook para encriptar password antes de insertar
