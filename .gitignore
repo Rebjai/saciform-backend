@@ -3,6 +3,9 @@
 /node_modules
 /build
 
+# Requirements (temporary)
+requisitos.md
+
 # Logs
 logs
 *.log
