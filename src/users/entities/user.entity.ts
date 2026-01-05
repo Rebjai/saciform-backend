@@ -6,7 +6,6 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  BeforeInsert,
 } from 'typeorm';
 import { UserRole } from '../../common/enums';
 import * as bcrypt from 'bcrypt';
@@ -49,14 +48,6 @@ export class User {
 
   @Column({ nullable: true })
   teamId: string;
-
-  // Hook para encriptar password antes de insertar
-  @BeforeInsert()
-  async hashPassword() {
-    if (this.password) {
-      this.password = await bcrypt.hash(this.password, 10);
-    }
-  }
 
   // Método para validar password
   async validatePassword(plainPassword: string): Promise<boolean> {

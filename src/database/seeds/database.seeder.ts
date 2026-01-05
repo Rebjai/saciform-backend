@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Team } from '../../teams/entities/team.entity';
 import { UserRole } from '../../common/enums';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class DatabaseSeeder {
@@ -13,6 +14,13 @@ export class DatabaseSeeder {
     @InjectRepository(Team)
     private teamsRepository: Repository<Team>,
   ) {}
+
+  /**
+   * Método privado para hashear contraseñas
+   */
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 12);
+  }
 
   async seed() {
     console.log('🌱 Iniciando seed de base de datos...');
@@ -42,10 +50,13 @@ export class DatabaseSeeder {
     });
 
     if (!existingAdmin) {
+      // Hashear contraseña manualmente
+      const hashedPassword = await this.hashPassword('admin123');
+      
       const adminUser = this.usersRepository.create({
         email: 'admin@sacifor.com',
         name: 'Administrador',
-        password: 'admin123', // Texto plano - el hook @BeforeInsert() se encarga del hash
+        password: hashedPassword, // Contraseña ya hasheada
         role: UserRole.ADMIN,
         teamId: adminTeam.id,
       });
@@ -84,10 +95,13 @@ export class DatabaseSeeder {
     });
 
     if (!existingEditor) {
+      // Hashear contraseña manualmente
+      const hashedPassword = await this.hashPassword('editor123');
+      
       const editorUser = this.usersRepository.create({
         email: 'editor@sacifor.com',
         name: 'Editor de Prueba',
-        password: 'editor123', // Texto plano - el hook @BeforeInsert() se encarga del hash
+        password: hashedPassword, // Contraseña ya hasheada
         role: UserRole.EDITOR,
         teamId: fieldTeam.id,
       });
@@ -107,10 +121,13 @@ export class DatabaseSeeder {
     });
 
     if (!existingUser) {
+      // Hashear contraseña manualmente
+      const hashedPassword = await this.hashPassword('user123');
+      
       const normalUser = this.usersRepository.create({
         email: 'user@sacifor.com',
         name: 'Usuario de Prueba',
-        password: 'user123', // Texto plano - el hook @BeforeInsert() se encarga del hash
+        password: hashedPassword, // Contraseña ya hasheada
         role: UserRole.USER,
         teamId: fieldTeam.id,
       });

@@ -26,7 +26,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // Validar password
+    // Validar password usando el método de la entidad User
     const isPasswordValid = await user.validatePassword(password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales inválidas');
