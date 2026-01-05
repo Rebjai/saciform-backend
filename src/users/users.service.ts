@@ -5,6 +5,7 @@ import { User } from './entities/user.entity';
 import { Team } from '../teams/entities/team.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { EditorCreateUserDto } from './dto/editor-create-user.dto';
 import { UserRole } from '../common/enums';
 import * as bcrypt from 'bcrypt';
 
@@ -16,6 +17,13 @@ export class UsersService {
     @InjectRepository(Team)
     private teamsRepository: Repository<Team>,
   ) {}
+
+  /**
+   * Método privado para hashear contraseñas
+   */
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 12);
+  }
 
   /**
    * Crear nuevo usuario (solo ADMIN)
@@ -41,13 +49,57 @@ export class UsersService {
       throw new BadRequestException('Email already exists');
     }
 
-    // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    // Hashear contraseña manualmente
+    const hashedPassword = await this.hashPassword(createUserDto.password);
 
-    // Crear usuario
+    // Crear usuario con contraseña hasheada
     const user = this.usersRepository.create({
       ...createUserDto,
       password: hashedPassword,
+    });
+
+    return await this.usersRepository.save(user);
+  }
+
+  /**
+   * Crear usuario normal por EDITOR
+   * Solo puede crear usuarios USER y se asignan automáticamente a su equipo
+   */
+  async createByEditor(editorCreateUserDto: EditorCreateUserDto, editorId: string): Promise<User> {
+    // Buscar el editor para obtener su equipo
+    const editor = await this.usersRepository.findOne({
+      where: { id: editorId },
+      relations: ['team']
+    });
+
+    if (!editor) {
+      throw new NotFoundException('Editor not found');
+    }
+
+    // Validar que el editor tenga un equipo asignado
+    if (!editor.teamId) {
+      throw new BadRequestException('Editor must have a team assigned to create users');
+    }
+
+    // Verificar que el email no esté en uso
+    const existingUser = await this.usersRepository.findOne({
+      where: { email: editorCreateUserDto.email }
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Email already exists');
+    }
+
+    // Hashear contraseña manualmente
+    const hashedPassword = await this.hashPassword(editorCreateUserDto.password);
+
+    // Crear usuario normal con el equipo del editor
+    const user = this.usersRepository.create({
+      email: editorCreateUserDto.email,
+      name: editorCreateUserDto.name,
+      password: hashedPassword, // Contraseña ya hasheada
+      role: UserRole.USER, // Solo puede crear usuarios normales
+      teamId: editor.teamId, // Asignar automáticamente el equipo del editor
     });
 
     return await this.usersRepository.save(user);
@@ -110,14 +162,16 @@ export class UsersService {
       }
     }
 
-    // Si se está actualizando la contraseña, hashearla
+    // Si se está actualizando la contraseña, hashearla manualmente
     if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+      updateUserDto.password = await this.hashPassword(updateUserDto.password);
     }
 
-    // Actualizar usuario
-    await this.usersRepository.update(id, updateUserDto);
-    return await this.findOne(id);
+    // Actualizar las propiedades del usuario
+    Object.assign(user, updateUserDto);
+
+    // Guardar usuario
+    return await this.usersRepository.save(user);
   }
 
   /**

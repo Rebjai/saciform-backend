@@ -9,10 +9,12 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { EditorCreateUserDto } from './dto/editor-create-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -35,6 +37,23 @@ export class UsersController {
     const { password, ...result } = user;
     return {
       message: 'User created successfully',
+      user: result
+    };
+  }
+
+  /**
+   * Crear usuario normal por EDITOR
+   * Solo puede crear usuarios USER y se asignan automáticamente al equipo del editor
+   */
+  @Post('create-team-user')
+  @Roles(UserRole.EDITOR)
+  @HttpCode(HttpStatus.CREATED)
+  async createByEditor(@Body() editorCreateUserDto: EditorCreateUserDto, @Request() req) {
+    const user = await this.usersService.createByEditor(editorCreateUserDto, req.user.sub);
+    // No devolver la contraseña en la respuesta
+    const { password, ...result } = user;
+    return {
+      message: 'User created successfully and assigned to your team',
       user: result
     };
   }
