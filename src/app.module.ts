@@ -9,6 +9,7 @@ import { DatabaseModule } from './database/database.module';
 import { FilesModule } from './files/files.module';
 import { MunicipalitiesModule } from './municipalities/municipalities.module';
 import { UsersModule } from './users/users.module';
+import { TeamsModule } from './teams/teams.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     FilesModule,
     MunicipalitiesModule,
     UsersModule,
+    TeamsModule,
   ],
   controllers: [],
   providers: [],

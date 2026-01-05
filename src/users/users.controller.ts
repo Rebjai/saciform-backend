@@ -9,10 +9,12 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { EditorCreateUserDto } from './dto/editor-create-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -138,6 +140,82 @@ export class UsersController {
     await this.usersService.remove(id);
     return {
       message: 'User deleted successfully'
+    };
+  }
+
+  // ===== ENDPOINTS ESPECÍFICOS PARA EDITORES =====
+
+  /**
+   * Crear usuario normal por EDITOR
+   * Solo puede crear usuarios USER y se asignan automáticamente al equipo del editor
+   */
+  @Post('create-team-user')
+  @Roles(UserRole.EDITOR)
+  @HttpCode(HttpStatus.CREATED)
+  async createByEditor(@Body() editorCreateUserDto: EditorCreateUserDto, @Request() req) {
+    const user = await this.usersService.createByEditor(editorCreateUserDto, req.user.sub);
+    // No devolver la contraseña en la respuesta
+    const { password, ...result } = user;
+    return {
+      message: 'User created successfully and assigned to your team',
+      user: result
+    };
+  }
+  
+  /**
+   * Obtener usuarios de mi equipo (solo EDITOR)
+   */
+  @Get('my-team')
+  @Roles(UserRole.EDITOR)
+  async findMyTeamUsers(@Request() req) {
+    const users = await this.usersService.findMyTeamUsers(req.user.sub);
+    // No devolver contraseñas
+    const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+    return {
+      message: 'Team users retrieved successfully',
+      users: usersWithoutPasswords,
+      count: users.length
+    };
+  }
+
+  /**
+   * Obtener usuario específico de mi equipo (solo EDITOR)
+   */
+  @Get('my-team/:id')
+  @Roles(UserRole.EDITOR)
+  async findMyTeamUser(@Param('id') id: string, @Request() req) {
+    const user = await this.usersService.findMyTeamUser(req.user.sub, id);
+    const { password, ...result } = user;
+    return {
+      message: 'Team user retrieved successfully',
+      user: result
+    };
+  }
+
+  /**
+   * Actualizar usuario de mi equipo (solo EDITOR)
+   */
+  @Patch('my-team/:id')
+  @Roles(UserRole.EDITOR)
+  async updateMyTeamUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Request() req) {
+    const user = await this.usersService.updateMyTeamUser(req.user.sub, id, updateUserDto);
+    const { password, ...result } = user;
+    return {
+      message: 'Team user updated successfully',
+      user: result
+    };
+  }
+
+  /**
+   * Eliminar usuario de mi equipo (solo EDITOR)
+   */
+  @Delete('my-team/:id')
+  @Roles(UserRole.EDITOR)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeMyTeamUser(@Param('id') id: string, @Request() req) {
+    await this.usersService.removeMyTeamUser(req.user.sub, id);
+    return {
+      message: 'Team user deleted successfully'
     };
   }
 }
