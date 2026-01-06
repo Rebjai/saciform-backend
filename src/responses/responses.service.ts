@@ -163,6 +163,24 @@ export class ResponsesService {
     return this.findOne(id);
   }
 
+  /**
+   * Reabrir una respuesta finalizada (solo para administradores)
+   * Cambia el estado de FINAL a DRAFT
+   */
+  async reopenResponse(id: string): Promise<Response> {
+    const response = await this.findOne(id);
+
+    if (response.status !== ResponseStatus.FINAL) {
+      throw new BadRequestException('Solo se pueden reabrir respuestas finalizadas');
+    }
+
+    await this.responsesRepository.update(id, {
+      status: ResponseStatus.DRAFT,
+    });
+
+    return this.findOne(id);
+  }
+
   async delete(id: string, userId: string, userRole?: string) {
     const response = await this.findOne(id);
 
