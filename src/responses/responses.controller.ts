@@ -75,7 +75,7 @@ export class ResponsesController {
   }
 
   @Patch(':id/reopen')
-  @Roles(UserRole.ADMIN) // Solo administradores pueden reabrir respuestas
+  @Roles(UserRole.ADMIN, UserRole.EDITOR) // Solo administradores pueden reabrir respuestas
   reopen(@Param('id') id: string, @Request() req) {
     return this.responsesService.reopenResponse(id);
   }
