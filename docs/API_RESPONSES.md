@@ -35,6 +35,7 @@ enum ResponseStatus {
 | Editar cualquier respuesta | ❌ | ✅ | ✅ |
 | Editar respuesta finalizada | ❌ | ✅ | ✅ |
 | Finalizar respuesta | ✅ | ✅ | ✅ |
+| Reabrir respuesta finalizada | ❌ | ❌ | ✅ |
 | Eliminar respuesta | ❌ | ✅ | ✅ |
 
 ## 🔧 Endpoints
@@ -305,7 +306,62 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 🗑️ Eliminar Respuesta
+### � Reabrir Respuesta (Solo ADMIN)
+
+**PATCH** `/responses/:id/reopen`
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Permisos:** Solo ADMIN
+
+**Efecto:**
+- Cambia `status` de `final` a `draft`
+- Solo administradores pueden reabrir respuestas finalizadas
+- Permite que la respuesta vuelva a ser editable
+
+**Respuesta 200:**
+```json
+{
+  "id": "a7b51c88-0a01-4b4a-9f43-27bae002aa67",
+  "surveyId": "local_actors_interview_v1",
+  "answers": {"...": "..."},
+  "metadata": {"...": "..."},
+  "status": "draft",
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "municipalityId": "660e8400-e29b-41d4-a716-446655440000",
+  "lastModifiedBy": "550e8400-e29b-41d4-a716-446655440000",
+  "createdAt": "2025-12-30T08:15:16.179Z",
+  "updatedAt": "2025-12-30T08:35:16.179Z"
+}
+```
+
+**Errores:**
+```json
+// 400 - Bad Request (respuesta no está finalizada)
+{
+  "statusCode": 400,
+  "message": "Solo se pueden reabrir respuestas finalizadas"
+}
+
+// 403 - Forbidden (usuario no es admin)
+{
+  "statusCode": 403,
+  "message": "Forbidden resource"
+}
+
+// 404 - Not Found (respuesta no existe)
+{
+  "statusCode": 404,
+  "message": "Respuesta no encontrada"
+}
+```
+
+---
+
+### �🗑️ Eliminar Respuesta
 
 **DELETE** `/responses/:id`
 
@@ -372,15 +428,19 @@ curl -X PATCH http://localhost:3000/responses/RESPONSE_ID \
 curl -X PATCH http://localhost:3000/responses/RESPONSE_ID/finalize \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
-# 4. Obtener todas las respuestas
+# 4. Reabrir respuesta (Solo ADMIN)
+curl -X PATCH http://localhost:3000/responses/RESPONSE_ID/reopen \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+
+# 5. Obtener todas las respuestas
 curl -X GET http://localhost:3000/responses \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
-# 5. Filtrar respuestas por survey
+# 6. Filtrar respuestas por survey
 curl -X GET "http://localhost:3000/responses?surveyId=community_assessment_v1" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
-# 6. Obtener respuesta específica
+# 7. Obtener respuesta específica
 curl -X GET http://localhost:3000/responses/RESPONSE_ID \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
