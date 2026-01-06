@@ -32,11 +32,14 @@ enum ResponseStatus {
 | Ver propias respuestas | ✅ | ❌ | ❌ |
 | Ver todas las respuestas | ❌ | ✅ | ✅ |
 | Editar propia respuesta (draft) | ✅ | ✅ | ✅ |
-| Editar cualquier respuesta | ❌ | ✅ | ✅ |
-| Editar respuesta finalizada | ❌ | ✅ | ✅ |
-| Finalizar respuesta | ✅ | ✅ | ✅ |
-| Reabrir respuesta finalizada | ❌ | ❌ | ✅ |
-| Eliminar respuesta | ❌ | ✅ | ✅ |
+| Editar respuesta de su equipo | ❌ | ✅ | ✅ |
+| Editar cualquier respuesta | ❌ | ❌ | ✅ |
+| Editar respuesta finalizada | ❌ | ✅ (su equipo) | ✅ |
+| Finalizar propia respuesta | ✅ | ✅ | ✅ |
+| Finalizar respuesta de equipo | ❌ | ✅ | ✅ |
+| Reabrir respuesta de equipo | ❌ | ✅ | ✅ |
+| Eliminar respuesta de equipo | ❌ | ✅ | ✅ |
+| Eliminar respuesta | ❌ | ✅ (su equipo) | ✅ |
 
 ## 🔧 Endpoints
 
@@ -306,7 +309,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### � Reabrir Respuesta (Solo ADMIN)
+### 🔄 Reabrir Respuesta (ADMIN y EDITOR)
 
 **PATCH** `/responses/:id/reopen`
 
@@ -315,11 +318,13 @@ Authorization: Bearer <jwt_token>
 Authorization: Bearer <jwt_token>
 ```
 
-**Permisos:** Solo ADMIN
+**Permisos:** 
+- **ADMIN**: Puede reabrir cualquier respuesta
+- **EDITOR**: Solo respuestas de usuarios de su equipo
 
 **Efecto:**
 - Cambia `status` de `final` a `draft`
-- Solo administradores pueden reabrir respuestas finalizadas
+- Solo administradores y editores pueden reabrir respuestas de su ámbito
 - Permite que la respuesta vuelva a ser editable
 
 **Respuesta 200:**
@@ -346,10 +351,10 @@ Authorization: Bearer <jwt_token>
   "message": "Solo se pueden reabrir respuestas finalizadas"
 }
 
-// 403 - Forbidden (usuario no es admin)
+// 403 - Forbidden (usuario no tiene permisos sobre la respuesta)
 {
   "statusCode": 403,
-  "message": "Forbidden resource"
+  "message": "Solo administradores y editores pueden reabrir respuestas de su ámbito"
 }
 
 // 404 - Not Found (respuesta no existe)
@@ -428,9 +433,9 @@ curl -X PATCH http://localhost:3000/responses/RESPONSE_ID \
 curl -X PATCH http://localhost:3000/responses/RESPONSE_ID/finalize \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
-# 4. Reabrir respuesta (Solo ADMIN)
+# 4. Reabrir respuesta (ADMIN y EDITOR)
 curl -X PATCH http://localhost:3000/responses/RESPONSE_ID/reopen \
-  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+  -H "Authorization: Bearer ADMIN_OR_EDITOR_JWT_TOKEN"
 
 # 5. Obtener todas las respuestas
 curl -X GET http://localhost:3000/responses \

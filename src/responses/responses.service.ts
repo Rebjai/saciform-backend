@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException,
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Response } from './entities/response.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { UpdateResponseDto } from './dto/update-response.dto';
 import { ResponseStatus, UserRole } from '../common/enums';
@@ -11,6 +12,8 @@ export class ResponsesService {
   constructor(
     @InjectRepository(Response)
     private responsesRepository: Repository<Response>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   async create(createResponseDto: CreateResponseDto, requestingUserId: string, requestingUserRole: string, includeFull = false) {
@@ -55,20 +58,62 @@ export class ResponsesService {
     };
   }
 
+  /**
+   * Verificar si un usuario puede gestionar una respuesta específica
+   * - USER: Solo sus propias respuestas
+   * - EDITOR: Solo respuestas de usuarios de su equipo (incluyendo las suyas)
+   * - ADMIN: Todas las respuestas
+   */
+  private async canManageResponse(responseUserId: string, managingUserId: string, managingUserRole: string): Promise<boolean> {
+    // Admin puede gestionar todas las respuestas
+    if (managingUserRole === UserRole.ADMIN) {
+      return true;
+    }
+
+    // Usuario puede gestionar solo sus propias respuestas
+    if (managingUserRole === UserRole.USER) {
+      return responseUserId === managingUserId;
+    }
+
+    // Editor puede gestionar respuestas de usuarios de su equipo
+    if (managingUserRole === UserRole.EDITOR) {
+      // Si es la respuesta del mismo editor, puede gestionarla
+      if (responseUserId === managingUserId) {
+        return true;
+      }
+
+      // Verificar si ambos usuarios pertenecen al mismo equipo
+      const [responseUser, managingUser] = await Promise.all([
+        this.usersRepository.findOne({ where: { id: responseUserId } }),
+        this.usersRepository.findOne({ where: { id: managingUserId } })
+      ]);
+
+      if (!responseUser || !managingUser) {
+        return false;
+      }
+
+      // El editor debe tener equipo asignado y el usuario de la respuesta debe estar en el mismo equipo
+      return managingUser.teamId !== null && 
+             responseUser.teamId !== null && 
+             managingUser.teamId === responseUser.teamId;
+    }
+
+    return false;
+  }
+
   async update(id: string, updateResponseDto: UpdateResponseDto, userId: string, userRole?: string) {
     const response = await this.findOne(id);
 
-    // Verificar permisos según el rol
-    const isAdmin = userRole === UserRole.ADMIN;
-    const isEditor = userRole === UserRole.EDITOR;
-    const isOwner = response.userId === userId;
-
-    if (!isOwner && !isAdmin && !isEditor) {
+    // Verificar permisos usando el método helper
+    const canManage = await this.canManageResponse(response.userId, userId, userRole || UserRole.USER);
+    if (!canManage) {
       throw new ForbiddenException('No tienes permisos para modificar esta respuesta');
     }
 
     // Solo USER no puede modificar respuestas finalizadas
     // ADMIN y EDITOR sí pueden modificar respuestas finalizadas
+    const isAdmin = userRole === UserRole.ADMIN;
+    const isEditor = userRole === UserRole.EDITOR;
     if (response.status === ResponseStatus.FINAL && !isAdmin && !isEditor) {
       throw new BadRequestException('No puedes modificar una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
     }
@@ -145,10 +190,12 @@ export class ResponsesService {
     return response;
   }
 
-  async finalize(id: string, userId: string) {
+  async finalize(id: string, userId: string, userRole?: string) {
     const response = await this.findOne(id);
 
-    if (response.userId !== userId) {
+    // Verificar permisos usando el método helper
+    const canManage = await this.canManageResponse(response.userId, userId, userRole || UserRole.USER);
+    if (!canManage) {
       throw new ForbiddenException('No tienes permisos para finalizar esta respuesta');
     }
 
@@ -164,11 +211,17 @@ export class ResponsesService {
   }
 
   /**
-   * Reabrir una respuesta finalizada (solo para administradores)
+   * Reabrir una respuesta finalizada (administradores y editores de equipo)
    * Cambia el estado de FINAL a DRAFT
    */
-  async reopenResponse(id: string): Promise<Response> {
+  async reopenResponse(id: string, userId: string, userRole: string): Promise<Response> {
     const response = await this.findOne(id);
+
+    // Verificar permisos: Solo ADMIN y EDITOR con permisos sobre la respuesta
+    const canManage = await this.canManageResponse(response.userId, userId, userRole);
+    if (!canManage || userRole === UserRole.USER) {
+      throw new ForbiddenException('Solo administradores y editores pueden reabrir respuestas de su ámbito');
+    }
 
     if (response.status !== ResponseStatus.FINAL) {
       throw new BadRequestException('Solo se pueden reabrir respuestas finalizadas');
@@ -184,17 +237,16 @@ export class ResponsesService {
   async delete(id: string, userId: string, userRole?: string) {
     const response = await this.findOne(id);
 
-    // Verificar permisos según el rol
-    const isAdmin = userRole === UserRole.ADMIN;
-    const isEditor = userRole === UserRole.EDITOR;
-    const isOwner = response.userId === userId;
-
-    if (!isOwner && !isAdmin && !isEditor) {
+    // Verificar permisos usando el método helper
+    const canManage = await this.canManageResponse(response.userId, userId, userRole || UserRole.USER);
+    if (!canManage) {
       throw new ForbiddenException('No tienes permisos para eliminar esta respuesta');
     }
 
     // Solo USER no puede eliminar respuestas finalizadas
     // ADMIN y EDITOR sí pueden eliminar respuestas finalizadas
+    const isAdmin = userRole === UserRole.ADMIN;
+    const isEditor = userRole === UserRole.EDITOR;
     if (response.status === ResponseStatus.FINAL && !isAdmin && !isEditor) {
       throw new BadRequestException('No puedes eliminar una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
     }
