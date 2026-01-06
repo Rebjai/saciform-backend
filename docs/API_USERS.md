@@ -166,6 +166,49 @@ DELETE /users/{userId}
 Authorization: Bearer {jwt_token}
 ```
 
+### 🔐 Cambiar Contraseña (Usuario)
+```http
+PATCH /auth/change-password
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+
+{
+  "currentPassword": "contraseña_actual",
+  "newPassword": "nueva_contraseña"
+}
+```
+
+#### ✅ Respuesta Exitosa
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "message": "Password updated successfully"
+}
+```
+
+#### ❌ Errores Comunes
+```http
+# Contraseña actual incorrecta
+HTTP/1.1 400 Bad Request
+{
+  "statusCode": 400,
+  "message": "Current password is incorrect",
+  "error": "Bad Request"
+}
+
+# Nueva contraseña no válida
+HTTP/1.1 400 Bad Request
+{
+  "statusCode": 400,
+  "message": [
+    "newPassword must be longer than or equal to 6 characters"
+  ],
+  "error": "Bad Request"
+}
+```
+
 ## 🛡️ Reglas de Negocio
 
 ### ✅ Validaciones
@@ -174,11 +217,14 @@ Authorization: Bearer {jwt_token}
 - **Team es OPCIONAL**: Se puede crear usuario sin equipo y asignarlo después
 - Roles válidos: `user`, `editor`, `admin`
 - Si se proporciona teamId, debe existir el equipo
+- **Cambio de contraseña**: Requiere contraseña actual correcta antes del cambio
 
 ### 🚫 Restricciones de Seguridad
 - **No eliminar último admin**: Sistema previene eliminar el último usuario admin
 - **Contraseñas hasheadas**: Siempre se almacenan con bcrypt
 - **Sin contraseñas en respuestas**: Las contraseñas nunca se devuelven en las APIs
+- **Verificación de identidad**: Cambio de contraseña requiere autenticación JWT
+- **Validación previa**: Debe proporcionar contraseña actual para cambiar por nueva
 
 ### 📊 Casos de Uso Típicos
 
@@ -225,6 +271,22 @@ POST /users/create-team-user {
 # - asignado al equipo del editor
 ```
 
+#### Usuario Cambiando Su Contraseña
+```bash
+# Usuario autenticado cambia su propia contraseña
+PATCH /auth/change-password
+Authorization: Bearer {jwt_token}
+{
+  "currentPassword": "mi_contraseña_actual",
+  "newPassword": "nueva_contraseña_segura"
+}
+
+# Resultado: Solo el usuario puede cambiar su propia contraseña
+# - Se valida la contraseña actual
+# - Se hashe la nueva contraseña
+# - Tokens JWT existentes siguen siendo válidos
+```
+
 #### Gestionar Usuarios Problemáticos
 ```bash
 # 1. Cambiar de equipo
@@ -245,7 +307,7 @@ DELETE /users/{userId}
 
 | Código | Descripción |
 |--------|-------------|
-| `400` | Email ya existe / Datos inválidos / Editor sin equipo asignado |
+| `400` | Email ya existe / Datos inválidos / Editor sin equipo asignado / Contraseña actual incorrecta |
 | `401` | Token JWT inválido |
 | `403` | Sin permisos de admin/editor / Operación no permitida |
 | `404` | Usuario o equipo no encontrado |
@@ -261,6 +323,9 @@ DELETE /users/{userId}
 - `GET /users/:id` - Usuario específico
 - `PATCH /users/:id` - Actualizar usuario
 - `DELETE /users/:id` - Eliminar usuario
+
+### 🔐 Autenticación
+- `PATCH /auth/change-password` - Cambiar contraseña propia
 
 ### ✏️ Solo EDITOR
 - `POST /users/create-team-user` - Crear usuario normal para su equipo
