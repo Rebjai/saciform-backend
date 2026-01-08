@@ -68,12 +68,6 @@ export class ResponsesController {
     return this.responsesService.update(id, updateResponseDto, req.user.id, req.user.role);
   }
 
-  @Patch(':id/finalize')
-  @Roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.USER)
-  finalize(@Param('id') id: string, @Request() req) {
-    return this.responsesService.finalize(id, req.user.id, req.user.role);
-  }
-
   @Patch(':id/reopen')
   @Roles(UserRole.ADMIN, UserRole.EDITOR) // Administradores y editores pueden reabrir respuestas
   reopen(@Param('id') id: string, @Request() req) {

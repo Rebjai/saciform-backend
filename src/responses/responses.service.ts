@@ -114,11 +114,21 @@ export class ResponsesService {
     // ADMIN y EDITOR sí pueden modificar respuestas finalizadas
     const isAdmin = userRole === UserRole.ADMIN;
     const isEditor = userRole === UserRole.EDITOR;
-    if (response.status === ResponseStatus.FINAL && !isAdmin && !isEditor) {
-      throw new BadRequestException('No puedes modificar una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
+
+    // Verificar si está intentando finalizar la respuesta
+    const isFinalizingResponse = updateResponseDto.status === ResponseStatus.FINAL;
+    
+    if (isFinalizingResponse && response.status === ResponseStatus.FINAL) {
+      throw new BadRequestException('La respuesta ya está finalizada');
     }
 
-    const { answers, metadata } = updateResponseDto;
+    // Verificar si está modificando contenido de respuesta finalizada
+    const isModifyingContent = updateResponseDto.answers || updateResponseDto.metadata;
+    if (response.status === ResponseStatus.FINAL && isModifyingContent && !isAdmin && !isEditor) {
+      throw new BadRequestException('No puedes modificar el contenido de una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
+    }
+
+    const { answers, metadata, status } = updateResponseDto;
 
     // Preparar datos para actualizar
     const updateData: any = {};
@@ -131,6 +141,11 @@ export class ResponsesService {
     if (metadata) {
       // Merge de metadata existente con nuevo
       updateData.metadata = { ...response.metadata, ...metadata };
+    }
+
+    if (status) {
+      // Actualizar el estado si se proporciona
+      updateData.status = status;
     }
 
     // Registrar quién modificó la respuesta
@@ -154,7 +169,7 @@ export class ResponsesService {
       status: updatedResponse.status,
       answersCount: updatedResponse.answers ? Object.keys(updatedResponse.answers).length : 0,
       updatedAt: updatedResponse.updatedAt,
-      message: 'Respuesta actualizada exitosamente'
+      message: isFinalizingResponse ? 'Respuesta finalizada exitosamente' : 'Respuesta actualizada exitosamente'
     };
   }
 
@@ -188,26 +203,6 @@ export class ResponsesService {
     }
 
     return response;
-  }
-
-  async finalize(id: string, userId: string, userRole?: string) {
-    const response = await this.findOne(id);
-
-    // Verificar permisos usando el método helper
-    const canManage = await this.canManageResponse(response.userId, userId, userRole || UserRole.USER);
-    if (!canManage) {
-      throw new ForbiddenException('No tienes permisos para finalizar esta respuesta');
-    }
-
-    if (response.status === ResponseStatus.FINAL) {
-      throw new BadRequestException('La respuesta ya está finalizada');
-    }
-
-    await this.responsesRepository.update(id, {
-      status: ResponseStatus.FINAL,
-    });
-
-    return this.findOne(id);
   }
 
   /**

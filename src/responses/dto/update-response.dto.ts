@@ -1,5 +1,6 @@
 
-import { IsOptional, IsObject, IsUUID } from 'class-validator';
+import { IsOptional, IsObject, IsUUID, IsEnum } from 'class-validator';
+import { ResponseStatus } from '../../common/enums';
 
 export class UpdateResponseDto {
   @IsOptional()
@@ -9,6 +10,10 @@ export class UpdateResponseDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>; // Metadata actualizada
+
+  @IsOptional()
+  @IsEnum(ResponseStatus)
+  status?: ResponseStatus; // Estado de la respuesta
 
   @IsOptional()
   @IsUUID()

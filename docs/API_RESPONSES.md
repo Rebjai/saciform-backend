@@ -254,56 +254,50 @@ Content-Type: application/json
       "timestamp": "2025-12-30T08:30:00.000Z",
       "reason": "additional_information"
     }
-  }
+  },
+  "status": "final"
+}
+```
+
+**Casos de Uso:**
+```json
+// 1. Solo actualizar contenido
+{
+  "answers": {"new_field": "value"}
+}
+
+// 2. Solo finalizar respuesta
+{
+  "status": "final"
+}
+
+// 3. Actualizar y finalizar en una operación
+{
+  "answers": {"field": "value"},
+  "status": "final"
 }
 ```
 
 **Lógica de Merge:**
 - `answers`: Se hace merge con las respuestas existentes
-- `metadata`: Se hace merge con el metadata existente  
+- `metadata`: Se hace merge con el metadata existente
+- `status`: Cambia el estado (draft ↔ final)
 - `lastModifiedBy`: Se actualiza automáticamente
+
+**Reglas de Negocio:**
+- ✅ **Finalizar**: Cualquier usuario puede finalizar respuestas que puede gestionar
+- ❌ **Modificar finalizadas**: Solo ADMIN/EDITOR pueden editar respuestas finalizadas
+- ✅ **Re-finalizar**: Se previene finalizar respuestas ya finalizadas
 
 **Respuesta 200:**
 ```json
 {
   "id": "a7b51c88-0a01-4b4a-9f43-27bae002aa67",
   "surveyId": "local_actors_interview_v1", 
-  "status": "draft",
+  "status": "final",
   "answersCount": 7,
   "updatedAt": "2025-12-30T08:30:16.179Z",
-  "message": "Respuesta actualizada exitosamente"
-}
-```
-
----
-
-### ✅ Finalizar Respuesta
-
-**PATCH** `/responses/:id/finalize`
-
-**Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-**Efecto:**
-- Cambia `status` de `draft` a `final`
-- Solo el propietario puede finalizar su respuesta
-- Respuestas finalizadas solo pueden ser editadas por EDITOR/ADMIN
-
-**Respuesta 200:**
-```json
-{
-  "id": "a7b51c88-0a01-4b4a-9f43-27bae002aa67",
-  "surveyId": "local_actors_interview_v1",
-  "answers": {"...": "..."},
-  "metadata": {"...": "..."},
-  "status": "final",
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "municipalityId": "660e8400-e29b-41d4-a716-446655440000",
-  "lastModifiedBy": "550e8400-e29b-41d4-a716-446655440000",
-  "createdAt": "2025-12-30T08:15:16.179Z",
-  "updatedAt": "2025-12-30T08:35:16.179Z"
+  "message": "Respuesta finalizada exitosamente"
 }
 ```
 
@@ -429,9 +423,11 @@ curl -X PATCH http://localhost:3000/responses/RESPONSE_ID \
     }
   }'
 
-# 3. Finalizar respuesta
-curl -X PATCH http://localhost:3000/responses/RESPONSE_ID/finalize \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+# 3. Finalizar respuesta (integrado en update)
+curl -X PATCH http://localhost:3000/responses/RESPONSE_ID \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "final"}'
 
 # 4. Reabrir respuesta (ADMIN y EDITOR)
 curl -X PATCH http://localhost:3000/responses/RESPONSE_ID/reopen \
