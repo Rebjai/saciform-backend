@@ -167,7 +167,7 @@ export class ResponsesService {
     };
   }
 
-  async findAll(userId?: string, surveyId?: string, status?: ResponseStatus) {
+  async findAll(userId: string, userRole: string, surveyId?: string, status?: ResponseStatus) {
     const queryBuilder = this.responsesRepository
       .createQueryBuilder('response')
       .leftJoinAndSelect('response.user', 'user')
@@ -188,9 +188,18 @@ export class ResponsesService {
       ])
       .orderBy('response.createdAt', 'DESC');
 
-    if (userId) {
+    // Filtrar según el rol del usuario
+    if (userRole === UserRole.USER) {
+      // USER: solo sus propias respuestas
       queryBuilder.andWhere('response.userId = :userId', { userId });
+    } else if (userRole === UserRole.EDITOR) {
+      // EDITOR: respuestas de usuarios de su equipo
+      queryBuilder
+        .innerJoin(User, 'editorUser', 'editorUser.id = :userId', { userId })
+        .andWhere('user.teamId = editorUser.teamId')
+        .andWhere('user.teamId IS NOT NULL');
     }
+    // ADMIN: sin filtros adicionales (ve todas las respuestas)
 
     if (surveyId) {
       queryBuilder.andWhere('response.surveyId = :surveyId', { surveyId });

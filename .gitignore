@@ -61,3 +61,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Personal database configuration files (local development only)
 database-setup.sql
 docs/database-setup.md
+
+# Database seeding scripts (contain test data)
+src/database/seedTeams.ts
+
