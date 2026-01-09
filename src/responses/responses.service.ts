@@ -154,14 +154,8 @@ export class ResponsesService {
     // Actualizar la respuesta
     await this.responsesRepository.update(id, updateData);
 
-    // Obtener la respuesta actualizada
-    const updatedResponse = await this.responsesRepository.findOne({
-      where: { id }
-    });
-
-    if (!updatedResponse) {
-      throw new NotFoundException('Respuesta no encontrada');
-    }
+    // Obtener la respuesta actualizada con información del usuario
+    const updatedResponse = await this.findOne(id);
 
     return {
       id: updatedResponse.id,
@@ -176,6 +170,22 @@ export class ResponsesService {
   async findAll(userId?: string, surveyId?: string, status?: ResponseStatus) {
     const queryBuilder = this.responsesRepository
       .createQueryBuilder('response')
+      .leftJoinAndSelect('response.user', 'user')
+      .select([
+        'response.id',
+        'response.surveyId', 
+        'response.answers',
+        'response.metadata',
+        'response.status',
+        'response.userId',
+        'response.municipalityId',
+        'response.lastModifiedBy',
+        'response.createdAt',
+        'response.updatedAt',
+        'user.id',
+        'user.name',
+        'user.role'
+      ])
       .orderBy('response.createdAt', 'DESC');
 
     if (userId) {
@@ -194,9 +204,26 @@ export class ResponsesService {
   }
 
   async findOne(id: string) {
-    const response = await this.responsesRepository.findOne({
-      where: { id }
-    });
+    const response = await this.responsesRepository
+      .createQueryBuilder('response')
+      .leftJoinAndSelect('response.user', 'user')
+      .select([
+        'response.id',
+        'response.surveyId', 
+        'response.answers',
+        'response.metadata',
+        'response.status',
+        'response.userId',
+        'response.municipalityId',
+        'response.lastModifiedBy',
+        'response.createdAt',
+        'response.updatedAt',
+        'user.id',
+        'user.name',
+        'user.role'
+      ])
+      .where('response.id = :id', { id })
+      .getOne();
 
     if (!response) {
       throw new NotFoundException('Respuesta no encontrada');
