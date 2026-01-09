@@ -4,8 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { ResponseStatus } from '../../common/enums';
+import { User } from '../../users/entities/user.entity';
 
 /**
  * Entidad Response - Versión simplificada
@@ -44,6 +47,11 @@ export class Response {
   // Referencias por ID (sin relaciones para simplicidad)
   @Column()
   userId: string;
+
+  // Relación con el usuario que creó la respuesta
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @Column({ nullable: true })
   municipalityId?: string;

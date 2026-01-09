@@ -114,11 +114,21 @@ export class ResponsesService {
     // ADMIN y EDITOR sí pueden modificar respuestas finalizadas
     const isAdmin = userRole === UserRole.ADMIN;
     const isEditor = userRole === UserRole.EDITOR;
-    if (response.status === ResponseStatus.FINAL && !isAdmin && !isEditor) {
-      throw new BadRequestException('No puedes modificar una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
+
+    // Verificar si está intentando finalizar la respuesta
+    const isFinalizingResponse = updateResponseDto.status === ResponseStatus.FINAL;
+    
+    if (isFinalizingResponse && response.status === ResponseStatus.FINAL) {
+      throw new BadRequestException('La respuesta ya está finalizada');
     }
 
-    const { answers, metadata } = updateResponseDto;
+    // Verificar si está modificando contenido de respuesta finalizada
+    const isModifyingContent = updateResponseDto.answers || updateResponseDto.metadata;
+    if (response.status === ResponseStatus.FINAL && isModifyingContent && !isAdmin && !isEditor) {
+      throw new BadRequestException('No puedes modificar el contenido de una respuesta finalizada. Solo editores y administradores pueden hacerlo.');
+    }
+
+    const { answers, metadata, status } = updateResponseDto;
 
     // Preparar datos para actualizar
     const updateData: any = {};
@@ -133,20 +143,19 @@ export class ResponsesService {
       updateData.metadata = { ...response.metadata, ...metadata };
     }
 
+    if (status) {
+      // Actualizar el estado si se proporciona
+      updateData.status = status;
+    }
+
     // Registrar quién modificó la respuesta
     updateData.lastModifiedBy = userId;
 
     // Actualizar la respuesta
     await this.responsesRepository.update(id, updateData);
 
-    // Obtener la respuesta actualizada
-    const updatedResponse = await this.responsesRepository.findOne({
-      where: { id }
-    });
-
-    if (!updatedResponse) {
-      throw new NotFoundException('Respuesta no encontrada');
-    }
+    // Obtener la respuesta actualizada con información del usuario
+    const updatedResponse = await this.findOne(id);
 
     return {
       id: updatedResponse.id,
@@ -154,18 +163,43 @@ export class ResponsesService {
       status: updatedResponse.status,
       answersCount: updatedResponse.answers ? Object.keys(updatedResponse.answers).length : 0,
       updatedAt: updatedResponse.updatedAt,
-      message: 'Respuesta actualizada exitosamente'
+      message: isFinalizingResponse ? 'Respuesta finalizada exitosamente' : 'Respuesta actualizada exitosamente'
     };
   }
 
-  async findAll(userId?: string, surveyId?: string, status?: ResponseStatus) {
+  async findAll(userId: string, userRole: string, surveyId?: string, status?: ResponseStatus) {
     const queryBuilder = this.responsesRepository
       .createQueryBuilder('response')
+      .leftJoinAndSelect('response.user', 'user')
+      .select([
+        'response.id',
+        'response.surveyId', 
+        'response.answers',
+        'response.metadata',
+        'response.status',
+        'response.userId',
+        'response.municipalityId',
+        'response.lastModifiedBy',
+        'response.createdAt',
+        'response.updatedAt',
+        'user.id',
+        'user.name',
+        'user.role'
+      ])
       .orderBy('response.createdAt', 'DESC');
 
-    if (userId) {
+    // Filtrar según el rol del usuario
+    if (userRole === UserRole.USER) {
+      // USER: solo sus propias respuestas
       queryBuilder.andWhere('response.userId = :userId', { userId });
+    } else if (userRole === UserRole.EDITOR) {
+      // EDITOR: respuestas de usuarios de su equipo
+      queryBuilder
+        .innerJoin(User, 'editorUser', 'editorUser.id = :userId', { userId })
+        .andWhere('user.teamId = editorUser.teamId')
+        .andWhere('user.teamId IS NOT NULL');
     }
+    // ADMIN: sin filtros adicionales (ve todas las respuestas)
 
     if (surveyId) {
       queryBuilder.andWhere('response.surveyId = :surveyId', { surveyId });
@@ -179,35 +213,32 @@ export class ResponsesService {
   }
 
   async findOne(id: string) {
-    const response = await this.responsesRepository.findOne({
-      where: { id }
-    });
+    const response = await this.responsesRepository
+      .createQueryBuilder('response')
+      .leftJoinAndSelect('response.user', 'user')
+      .select([
+        'response.id',
+        'response.surveyId', 
+        'response.answers',
+        'response.metadata',
+        'response.status',
+        'response.userId',
+        'response.municipalityId',
+        'response.lastModifiedBy',
+        'response.createdAt',
+        'response.updatedAt',
+        'user.id',
+        'user.name',
+        'user.role'
+      ])
+      .where('response.id = :id', { id })
+      .getOne();
 
     if (!response) {
       throw new NotFoundException('Respuesta no encontrada');
     }
 
     return response;
-  }
-
-  async finalize(id: string, userId: string, userRole?: string) {
-    const response = await this.findOne(id);
-
-    // Verificar permisos usando el método helper
-    const canManage = await this.canManageResponse(response.userId, userId, userRole || UserRole.USER);
-    if (!canManage) {
-      throw new ForbiddenException('No tienes permisos para finalizar esta respuesta');
-    }
-
-    if (response.status === ResponseStatus.FINAL) {
-      throw new BadRequestException('La respuesta ya está finalizada');
-    }
-
-    await this.responsesRepository.update(id, {
-      status: ResponseStatus.FINAL,
-    });
-
-    return this.findOne(id);
   }
 
   /**

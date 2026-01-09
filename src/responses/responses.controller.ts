@@ -45,11 +45,8 @@ export class ResponsesController {
     @Query('surveyId') surveyId?: string,
     @Query('status') status?: ResponseStatus,
   ) {
-    // Los usuarios normales solo ven sus propias respuestas
-    // Los ADMIN y EDITOR pueden ver todas las respuestas
-    const userId = req.user.role === UserRole.USER ? req.user.id : undefined;
-    
-    return this.responsesService.findAll(userId, surveyId, status);
+    // Pasar userId y role para que el servicio determine el filtrado apropiado
+    return this.responsesService.findAll(req.user.id, req.user.role, surveyId, status);
   }
 
   @Get(':id')
@@ -66,12 +63,6 @@ export class ResponsesController {
     @Request() req,
   ) {
     return this.responsesService.update(id, updateResponseDto, req.user.id, req.user.role);
-  }
-
-  @Patch(':id/finalize')
-  @Roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.USER)
-  finalize(@Param('id') id: string, @Request() req) {
-    return this.responsesService.finalize(id, req.user.id, req.user.role);
   }
 
   @Patch(':id/reopen')
