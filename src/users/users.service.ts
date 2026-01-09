@@ -103,6 +103,12 @@ export class UsersService {
         if (!team) {
           throw new NotFoundException(`Team with ID ${updateUserDto.teamId} not found`);
         }
+        
+        // ✅ CORRECCIÓN: Asignar el equipo cargado a la relación para mantener consistencia
+        user.team = team;
+      } else {
+        // ✅ CORRECCIÓN: Si teamId es null, limpiar la relación
+        user.team = null;
       }
       // Si teamId es null/undefined, se permite (desasignar equipo)
     }
